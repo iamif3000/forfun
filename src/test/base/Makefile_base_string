@@ -1,0 +1,20 @@
+objects = base_string_test.o base_string.o atomic.o align.o
+LIBS = -lpthread
+STD = c99
+CC = cc -std=$(STD)
+
+base_string_test : $(objects)
+	$(CC) -o $@ $(LIBS) $(objects)
+
+base_string_test.o : base_string_test.c ../common/test_common.h
+	$(CC) -c base_string_test.c
+base_string.o : ../../base/base_string.c
+	$(CC) -c ../../base/base_string.c
+atomic.o : ../../port/atomic.c ../../port/atomic.h
+	$(CC) -c ../../port/atomic.c
+align.o : ../../common/align.c ../../common/align.h
+	$(CC) -c ../../common/align.c
+	
+.PHONY : clean
+clean : 
+	-rm base_string_test $(objects)

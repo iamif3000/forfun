@@ -1,0 +1,20 @@
+objects = atomic_test.o atomic.o
+LIBS = -lpthread
+STD = c99
+CC = cc -std=$(STD)
+#VPATH = ../common/:../../port/
+
+atomic_test : $(objects)
+	$(CC) -o $@ $(LIBS) $(objects)
+	
+atomic_test.o : atomic_test.c ../common/test_common.h
+	$(CC) -c atomic_test.c
+atomic.o : ../../port/atomic.h ../../port/atomic.c
+	$(CC) -c ../../port/atomic.c
+
+#atomic_test.o : test_common.h
+#atomic.o : atomic.c atomic.h
+	
+.PHONY : clean
+clean : 
+	-rm atomic_test $(objects)
