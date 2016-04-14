@@ -324,12 +324,16 @@ Page *fixPage(const PageID page_id, const PageFixType fix_type)
             if (manager_p->lru_zoneB_bottom_p != NULL) {
               page_cache_p = manager_p->lru_zoneB_bottom_p;
 
-              // TODO : consider more about race condition, dirty
-              removeFromLruList(page_cache_p);
+              key.ptr = &page_cache_p->page_res.page.id;
+              error = removeFromHashTable(manager_p->page_cache_ht, key);
+              if (error == NO_ERROR) {
+                // TODO : consider more about race condition, dirty
+                removeFromLruList(page_cache_p);
 
-              page_cache_p->page_res.page.id = page_id;
+                page_cache_p->page_res.page.id = page_id;
 
-              error = NO_ERROR;
+                error = NO_ERROR;
+              }
             }
 
             unlock_int(&manager_p->lru_lock);
