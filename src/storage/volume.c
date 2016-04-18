@@ -124,13 +124,13 @@ end:
 #undef READ_UINT64
 }
 
-int createVolume(int id, const String *path_p, const count_t size, Volume **volume_p)
+Volume *createVolume(const VolumeID id, const String *path_p, const count_t size)
 {
   int error = NO_ERROR;
   Volume *vol_p = NULL;
   bool file_created = false;
 
-  assert(path_p != NULL && volume_p != NULL);
+  assert(path_p != NULL);
 
   vol_p = (Volume*)malloc(sizeof(Volume));
   if (vol_p == NULL) {
@@ -159,9 +159,6 @@ int createVolume(int id, const String *path_p, const count_t size, Volume **volu
 
   vol_p->fd = error;
 
-  // the return volume
-  *volume_p = vol_p;
-
 end:
 
   if (error > 0) {
@@ -171,9 +168,22 @@ end:
   if (error != NO_ERROR && vol_p != NULL) {
     (void)destroyString(&vol_p->path);
     free(vol_p);
+
+    vol_p = NULL;
   }
 
-  return error;
+  return vol_p;
+}
+
+Volume *loadVolume(const VolumeID id, const String *path_p)
+{
+  Volume *vol_p = NULL;
+
+  assert(!IS_VOLUMEID_NULL(id) && path_p != NULL);
+
+  // TODO
+
+  return vol_p;
 }
 
 int formatVolume(const Volume *volume_p, VolumeType type)
@@ -278,6 +288,28 @@ int allocPages(Volume *volume_p, id64_t *pages_p, count_t pages_count)
   }
 
 end:
+
+  return error;
+}
+
+int loadPage(const PageID page_id, byte *page_buf_p)
+{
+  int error = NO_ERROR;
+
+  assert(!IS_PAGEID_NULL(page_id) && page_buf_p != NULL);
+
+  // TODO
+
+  return error;
+}
+
+int savePage(const PageID page_id, const byte *page_buf_p)
+{
+  int error = NO_ERROR;
+
+  assert(!IS_PAGEID_NULL(page_id) && page_buf_p != NULL);
+
+  // TODO
 
   return error;
 }

@@ -49,8 +49,10 @@ String *refString(String *str);
 String *editString(String *str);
 String *cloneString(String *str);
 int copyString(String *dst, const String *src);
+int appendByte(String *str, byte b);
+void resetString(String *str);
 
-int initString(String *str, count_t size);
+int initString(String *str, count_t size, const char *str);
 int destroyString(String *str);
 
 #endif /* BASE_STRING_H_ */

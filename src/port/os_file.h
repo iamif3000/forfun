@@ -11,18 +11,20 @@
 #ifndef OS_FILE_H_
 #define OS_FILE_H_
 
-int createFile(const String *path, count_t size);
-int removeFile(const String *path);
+int createFile(const char *path_p, count_t size);
+int removeFile(const char *path_p);
 
-int openFile(const String *path);
+int openFile(const char *path_p);
 int closeFile(const int fd);
 
-int readFile(const int fd, byte *bytes, const count_t count);
-int readFileFromOffset(const int fd, byte *bytes, const count_t count, const offset_t offset);
-int writeFile(const int fd, const byte *bytes, const count_t count);
-int writeFileToOffset(const int fd, const byte *bytes, const count_t count, const offset_t offset);
+ssize_t readFile(const int fd, byte *bytes, const count_t count);
+ssize_t readFileFromOffset(const int fd, byte *bytes, const count_t count, const offset_t offset);
+ssize_t writeFile(const int fd, const byte *bytes, const count_t count);
+ssize_t writeFileToOffset(const int fd, const byte *bytes, const count_t count, const offset_t offset);
 
 offset_t seekFile(const int fd, const offset_t offset, const int whence);
 offset_t posFile(const int fd);
+
+bool canAccessFile(const char *path_p);
 
 #endif /* OS_FILE_H_ */

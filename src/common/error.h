@@ -32,6 +32,8 @@ enum {
 
   ER_PC_NO_MORE_CACHE_ROOM = -9980,
 
+  ER_VM_CONF_ERROR = -9960,
+
   ER_LAST
 };
 

@@ -19,10 +19,8 @@ int main(void)
   String *str = NULL;
   int fd;
 
-  str = allocString(sizeof(file_name), file_name);
-
   (void)remove(file_name);
-  fd = createFile(str, FILE_SIZE);
+  fd = createFile(file_name, FILE_SIZE);
   if (fd < 0) {
     error = 1;
     goto end;
@@ -34,7 +32,7 @@ int main(void)
     goto end;
   }
 
-  fd = openFile(str);
+  fd = openFile(file_name);
   if (fd < 0) {
     error = 3;
     goto end;
@@ -75,11 +73,7 @@ end:
     (void)closeFile(fd);
   }
 
-  removeFile(str);
-
-  if (str != NULL) {
-    freeString(str);
-  }
+  removeFile(file_name);
 
   if (error  == NO_ERROR) {
     printf("os_file_test successes!\n");

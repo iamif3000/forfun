@@ -19,15 +19,15 @@
 /*
  * return < 0 means error occurred, > 0 means fd
  */
-int createFile(const String *path, count_t size)
+int createFile(const char *path_p, count_t size)
 {
   int error = NO_ERROR;
   offset_t ofst = 0;
   int fd;
 
-  assert(path != NULL && path->bytes != NULL);
+  assert(path_p != NULL);
 
-  error = open(path->bytes, O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, S_IRUSR | S_IWUSR);
+  error = open(path_p, O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, S_IRUSR | S_IWUSR);
   if (error < 0) {
     error = ER_OS_FILE_CREATE_FAIL;
     goto Error;
@@ -58,13 +58,13 @@ Error:
   return error;
 }
 
-int removeFile(const String *path)
+int removeFile(const char *path_p)
 {
   int error = NO_ERROR;
 
-  assert(path != NULL && path->bytes != NULL);
+  assert(path_p != NULL);
 
-  error = unlink(path->bytes);
+  error = unlink(path_p);
   if (error < 0) {
     error = ER_OS_FILE_REMOVE_FAIL;
   }
@@ -75,13 +75,13 @@ int removeFile(const String *path)
 /*
  * return: >0 fd, <0 error
  */
-int openFile(const String *path)
+int openFile(const char *path_p)
 {
   int error = NO_ERROR;
 
-  assert(path != NULL && path->bytes != NULL);
+  assert(path_p != NULL);
 
-  error = open(path->bytes, O_RDWR | O_NONBLOCK);
+  error = open(path_p, O_RDWR | O_NONBLOCK);
   if (error < 0) {
     error = ER_OS_FILE_OPEN_FAIL;
   }
@@ -103,9 +103,9 @@ int closeFile(const int fd)
   return error;
 }
 
-int readFile(const int fd, byte *bytes, const count_t count)
+ssize_t readFile(const int fd, byte *bytes, const count_t count)
 {
-  int error = NO_ERROR;
+  ssize_t error = NO_ERROR;
   ssize_t ret, _read = 0;
 
   assert(fd > 0 && bytes != NULL);
@@ -130,26 +130,28 @@ int readFile(const int fd, byte *bytes, const count_t count)
     }
   }
 
+  error = _read;
+
 Error:
 
   return error;
 }
 
-int readFileFromOffset(const int fd, byte *bytes, const count_t count, const offset_t offset)
+ssize_t readFileFromOffset(const int fd, byte *bytes, const count_t count, const offset_t offset)
 {
-  int error = NO_ERROR;
+  ssize_t error = NO_ERROR;
   offset_t ofst = 0;
 
   assert(fd > 0 && bytes != NULL);
 
   ofst = seekFile(fd, offset, SEEK_SET);
   if (ofst < 0) {
-    error = (int)ofst;
+    error = (ssize_t)ofst;
     goto Error;
   }
 
   error = readFile(fd, bytes, count);
-  if (error != NO_ERROR) {
+  if (error < 0) {
     goto Error;
   }
 
@@ -158,9 +160,9 @@ Error:
   return error;
 }
 
-int writeFile(const int fd, const byte *bytes, const count_t count)
+ssize_t writeFile(const int fd, const byte *bytes, const count_t count)
 {
-  int error = NO_ERROR;
+  ssize_t error = NO_ERROR;
   ssize_t ret, wrote = 0;
 
   assert(fd > 0 && bytes != NULL);
@@ -184,26 +186,28 @@ int writeFile(const int fd, const byte *bytes, const count_t count)
     }
   }
 
+  error = wrote;
+
 Error:
 
   return error;
 }
 
-int writeFileToOffset(const int fd, const byte *bytes, const count_t count, const offset_t offset)
+ssize_t writeFileToOffset(const int fd, const byte *bytes, const count_t count, const offset_t offset)
 {
-  int error = NO_ERROR;
+  ssize_t error = NO_ERROR;
   offset_t ofst = 0;
 
   assert(fd > 0 && bytes != NULL);
 
   ofst = seekFile(fd, offset, SEEK_SET);
   if (ofst < 0) {
-    error = (int)ofst;
+    error = (ssize_t)ofst;
     goto Error;
   }
 
   error = writeFile(fd, bytes, count);
-  if (error != NO_ERROR) {
+  if (error < NO_ERROR) {
     goto Error;
   }
 
@@ -244,5 +248,20 @@ offset_t posFile(const int fd)
   }
 
   return ofst;
+}
+
+bool canAccessFile(const char *path_p)
+{
+  int error = NO_ERROR;
+  struct stat buf;
+
+  assert(path_p != NULL);
+
+  error = stat(path_p, &buf);
+  if (error < 0) {
+    return false;
+  }
+
+  return true;
 }
 

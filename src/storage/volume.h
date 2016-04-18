@@ -33,6 +33,10 @@
     (h_p)->file_tracker = { 0, 0 }; \
   } while(0)
 
+#define NULL_VOLUMEID -1
+
+#define IS_VOLUMEID_NULL(id) ((id) == NULL_VOLUMEID)
+
 typedef struct volume Volume;
 typedef struct volume_header VolumeHeader;
 typedef enum volume_type VolumeType;
@@ -46,7 +50,7 @@ enum volume_type {
 };
 
 struct volume {
-  int id;
+  VolumeID id;
   int fd;
   String path;
 };
@@ -64,7 +68,8 @@ struct volume_header {
   FileID file_tracker;
 };
 
-int createVolume(const int id, const String *path_p, const count_t size, Volume **volume_p);
+Volume *createVolume(const VolumeID id, const String *path_p, const count_t size);
+Volume *loadVolume(const VolumeID id, const String *path_p);
 int formatVolume(const Volume *volume_p, const VolumeType type);
 int allocPages(Volume *volume_p, id64_t *pages_p, count_t pages_count);
 

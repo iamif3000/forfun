@@ -15,10 +15,10 @@ typedef uint32_t uint32_ptr;
 typedef __uint64_t uint64_t;
 typedef __uint64_t number_t;
 typedef __uint64_t count_t;
-typedef __uint64_t id64_t;
 typedef __uint64_t uint64_ptr;
 
 typedef __int64_t int64_t;
+typedef __int64_t id64_t;
 typedef __int64_t offset_t;
 
 typedef int bool;

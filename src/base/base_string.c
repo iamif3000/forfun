@@ -27,6 +27,7 @@ String *cloneString(String *str)
   }
 
   (void)memcpy(ret_str->bytes, str->bytes, str->length);
+  ret_str->bytes[str->length] = '\0';
   ret_str->length = str->length;
   ret_str->ref_count = 1;
 
@@ -38,6 +39,7 @@ end:
 String *allocString(count_t size, const char *cstr)
 {
   String *str = NULL;
+  int i = 0;
 
   assert(size > 0);
 
@@ -54,20 +56,18 @@ String *allocString(count_t size, const char *cstr)
   }
 
   if (cstr != NULL) {
-    int i = 0;
-
     while (*cstr != '\0' && i < size) {
       str->bytes[i] = *cstr;
 
       ++cstr;
       ++i;
     }
-
-    str->bytes[i] = '\0';
   }
 
+  str->bytes[i] = '\0';
+
   str->size = size;
-  str->length = 0;
+  str->length = i;
   str->ref_count = 1;
   str->lock = 0;
 
@@ -101,13 +101,14 @@ void freeString(String *str)
  * for init String on stack
  * don't call refString on the String.
  */
-int initString(String *str, count_t size)
+int initString(String *str, count_t size, const char *str)
 {
   int error = NO_ERROR;
+  int i = 0;
 
   assert(str != NULL && size > 0);
 
-  size = ALIGN_DEFAULT(size);
+  size = ALIGN_DEFAULT(size + 1);
 
   str->bytes = (byte*)string_alloc(size);
   if (str->bytes == NULL) {
@@ -115,7 +116,18 @@ int initString(String *str, count_t size)
     goto end;
   }
 
-  str->length = 0;
+  if (str != NULL) {
+    while (*str != '\0' && i < size) {
+      str->bytes[i] = *str;
+
+      ++str;
+      ++i;
+    }
+  }
+
+  str->bytes[i] = '\0';
+
+  str->length = i;
   str->ref_count = 1;
   str->size = size;
   str->lock = 0;
@@ -200,9 +212,51 @@ int copyString(String *dst, const String *src)
   }
 
   memcpy(dst->bytes, src->bytes, src->length);
+  dst->bytes[dst->length] = '\0';
   dst->length = src->length;
 
 end:
 
   return error;
+}
+
+int appendByte(String *str, byte b)
+{
+  int error = NO_ERROR;
+  byte *buf_p = NULL;
+  count_t new_size = 0;
+
+  assert(str != NULL);
+
+  if (str->length + 1 >= str->size) {
+    new_size = str->size * 1.5;
+    buf_p = (byte*)string_alloc(sizeof(byte) * new_size);
+    if (buf_p == NULL) {
+      error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      goto end;
+    }
+
+    memcpy(buf_p, str->bytes, str->length);
+    buf_p[str->length] = '\0';
+
+    string_free(str->bytes);
+
+    str->bytes = buf_p;
+    str->size = new_size;
+  }
+
+  str->bytes[str->length++] = b;
+  str->bytes[str->length] = '\0';
+
+end:
+
+  return error;
+}
+
+void resetString(String *str)
+{
+  assert(str != NULL && str->bytes != NULL && str->size != NULL && str->ref_count == 1);
+
+  str->length = 0;
+  str->bytes[str->length] = '\0';
 }
