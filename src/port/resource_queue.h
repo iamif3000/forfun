@@ -8,6 +8,7 @@
 #include <pthread.h>
 
 #include "../base/base_string.h"
+#include "../port/thread.h"
 
 #ifndef RESOURCE_QUEUE_H_
 #define RESOURCE_QUEUE_H_
@@ -20,7 +21,7 @@
     rq_p = NULL; \
   } while(0)
 
-typedef struct rq_thread RQThread; // each thread should have it's own RQThread instance
+typedef Thread RQThread; // each thread should have it's own RQThread instance
 typedef struct rq_subject RQSubject;
 typedef struct rq_resource RQResource;
 typedef struct rq_holder_list RQHolderList;
@@ -52,11 +53,6 @@ struct rq_holder_list {
   QRRequestType req_type;
 
   RQSubject subject_p;
-};
-
-struct rq_thread {
-  pthread_t tid;
-  pthread_cond_t cond;
 };
 
 struct rq_resource {

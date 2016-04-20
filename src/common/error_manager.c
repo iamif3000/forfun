@@ -5,9 +5,15 @@
  *      Author: duping
  */
 
+#include<stdlib.h>
+#include <string.h>
+
 #include "../common/common.h"
+#include "../common/error_manager.h"
 
 #include "../port/atomic.h"
+#include "../port/thread.h"
+
 #include "error_manager.h"
 
 #define ERROR_LIST_PER_BLOCK 256
@@ -47,7 +53,7 @@ ErrorList *allocErrorList()
         continue;
       }
 
-      if (compare_and_swap_bool(&free_error_list_p, MARKED(list_p), list_p->next_p)) {
+      if (compare_and_swap_bool(&free_error_list_p, MARK(list_p), list_p->next_p)) {
         break;
       }
 
@@ -175,32 +181,20 @@ void destroyErrorManagerEnv()
   }
 }
 
-ErrorManager *createErrorManager()
-{
-  ErrorManager *manager_p = NULL;
-
-  manager_p = (ErrorManager*)malloc(sizeof(ErrorManager));
-  if (manager_p != NULL) {
-    manager_p->head_p = NULL;
-  }
-
-  return manager_p;
-}
-
-void destroyErrorManager(ErrorManager *manager_p)
-{
-  assert(manager_p != NULL);
-
-  free(manager_p);
-}
-
 int recordError(const int error_code, const char *file_p, const int line)
 {
   int error = NO_ERROR;
   ErrorList *list_p = NULL;
   int len;
+  Thread *thread_p = NULL;
 
   assert(error_code < 0 && file_p != NULL && line > 0);
+
+  thread_p = getThread();
+  if (thread_p == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
 
   list_p = allocErrorList();
   if (list_p == NULL) {
@@ -219,10 +213,72 @@ int recordError(const int error_code, const char *file_p, const int line)
     memcpy(&list_p->file_name[0], file_p + len - FILE_NAME_LEN, FILE_NAME_LEN);
   }
 
-  // TODO : current thread's error list
-  //list_p->next_p =
+  // current thread's error list
+  list_p->next_p = thread_p->err_list_p;
+  thread_p->err_list_p = list_p;
 
 end:
 
   return error;
+}
+
+int removeLastError()
+{
+  int error = NO_ERROR;
+  Thread *thread_p = NULL;
+  ErrorList *list_p = NULL;
+
+  thread_p = getThread();
+  if (thread_p == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  list_p = thread_p->err_list_p;
+  thread_p->err_list_p = list_p->next_p;
+
+  freeErrorList(list_p);
+
+end:
+
+  return error;
+}
+
+int clearErrors()
+{
+  int error = NO_ERROR;
+  Thread *thread_p = NULL;
+  ErrorList *next_p = NULL;
+
+  thread_p = getThread();
+  if (thread_p == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  while (thread_p->err_list_p != NULL) {
+    next_p = thread_p->err_list_p->next_p;
+
+    freeErrorList(thread_p->err_list_p);
+
+    thread_p->err_list_p = next_p;
+  }
+
+end:
+
+  return error;
+}
+
+int getErrorListBlockCount()
+{
+  int i = 0;
+  ErrorListBlock *block_p = error_list_clock_p;
+
+  while (block_p != NULL) {
+    ++i;
+
+    block_p = block_p->next_p;
+  }
+
+  return i;
 }

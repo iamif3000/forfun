@@ -1,4 +1,4 @@
-objects = resource_queue_test.o resource_queue.o base_string.o atomic.o align.o
+objects = resource_queue_test.o resource_queue.o base_string.o atomic.o align.o thread.o
 LIBS = -lpthread
 STD = c99
 CC = cc -std=$(STD) -g
@@ -17,6 +17,8 @@ atomic.o : ../../port/atomic.h ../../port/atomic.c
 	$(CC) -c ../../port/atomic.c
 align.o : ../../common/align.c ../../common/align.h
 	$(CC) -c ../../common/align.c
+thread.o : ../../port/thread.h ../../port/thread.c
+	$(CC) -c ../../port/thread.c
 	
 .PHONY : clean
 clean : 

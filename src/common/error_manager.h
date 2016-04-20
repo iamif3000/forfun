@@ -21,7 +21,6 @@
 #define SET_ERROR(error_code) recordError(error_code, __FILE__, __LINE__)
 
 typedef struct error_list ErrorList;
-typedef struct error_manager ErrorManager;
 
 struct error_list {
   int error_code;
@@ -30,17 +29,15 @@ struct error_list {
   ErrorList *next_p;
 };
 
-// per thread
-struct error_manager {
-  ErrorList *head_p;
-};
-
+// call init in the launch process
 int initErrorManagerEnv();
 void destroyErrorManagerEnv();
 
-ErrorManager *createErrorManager();
-void destroyErrorManager(ErrorManager *manager_p);
-
 int recordError(const int error_code, const char *file_p, const int line);
+int removeLastError();
+int clearErrors();
+
+// test only
+int getErrorListBlockCount();
 
 #endif /* ERROR_MANAGER_H_ */

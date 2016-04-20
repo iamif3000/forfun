@@ -58,9 +58,6 @@ struct wait_wake_func_arg {
   struct timespec *time_s_p;
 };
 
-static pthread_key_t key;
-static pthread_once_t key_once = PTHREAD_ONCE_INIT;
-
 static volatile int rq_list_block_lock = 0;
 static ResourceQueueBlock *rq_list_block_p = NULL;
 static ResourceQueue *free_rq_list_p = NULL;
@@ -69,8 +66,6 @@ static volatile int holder_list_block_lock = 0;
 static RQHolderListBlock *holder_list_block_p = NULL;
 static RQHolderList *free_holder_list_p = NULL;
 
-static void makeKey();
-static void destroyRQThread(void *p);
 static RQThread *getRQThread();
 static int initResource(RQResource *r_p);
 static int initResourceQueue(ResourceQueue *rq_p);
@@ -98,57 +93,9 @@ static int wake_func_wrapper(void *arg_p);
 /*
  * static
  */
-void makeKey()
-{
-  (void)pthread_key_create(&key, destroyRQThread);
-}
-
-/*
- * static
- */
-void destroyRQThread(void *p)
-{
-  RQThread *thread_p = (RQThread*)p;
-
-  if (thread_p != NULL) {
-    (void)pthread_cond_destroy(&thread_p->cond);
-    free(thread_p);
-  }
-}
-
-/*
- * static
- * NOTE : the checking for pthread_xxx return value is ignored,
- *        if we get a NULL return value, we should report an error
- */
 RQThread *getRQThread()
 {
-  int error = 0;
-  RQThread *thread_p = NULL;
-
-  (void)pthread_once(&key_once, makeKey);
-
-  thread_p = (RQThread*)pthread_getspecific(key);
-  if (thread_p == NULL) {
-    thread_p = (RQThread*)malloc(sizeof(RQThread));
-    if (thread_p != NULL) {
-      thread_p->tid = pthread_self();
-
-      error = pthread_cond_init(&thread_p->cond, NULL);
-      if (error == 0) {
-        error = pthread_setspecific(key, thread_p);
-        if (error < 0) {
-          destroyRQThread(thread_p);
-          thread_p = NULL;
-        }
-      } else {
-        free(thread_p);
-        thread_p = NULL;
-      }
-    }
-  }
-
-  return thread_p;
+  return getThread();
 }
 
 /*
