@@ -5,39 +5,15 @@
  *      Author: duping
  */
 
+#include <sys/types.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../port/os_file.h"
 
 #include "volume_manager.h"
 
-typedef struct volume_list VolumeList;
-typedef struct volume_manager VolumeManager;
 typedef enum parse_status ParseStatus;
-
-/*
- *   PRIMARY_VOLUME,
-  SECONDARY_VOLUME,
-  LOG_VOLUME,
-  TEMP_VOLUME,
- * */
-
-struct volume_list {
-  VolumeList *next_p;
-  Volume *vol_p;
-};
-
-struct volume_manager {
-  String conf_file_path;
-  int conf_file_fd;
-  count_t total_count;
-  count_t data_count;
-  count_t log_count;
-  count_t tmp_count;
-  VolumeList data_vol;  // sentinel
-  VolumeList log_vol;   // sentinel
-  VolumeList tmp_vol;  // sentinel
-};
 
 enum parse_status {
   P_VOLUME_ID_START,
@@ -53,6 +29,7 @@ static VolumeManager *manager_p = NULL;
 
 static void initVolumeList(VolumeList *node_p);
 static int parseVolumeConfFile(const int fd);
+static int addVolumeToManager(Volume *vol_p);
 
 /*
  * static
@@ -68,12 +45,13 @@ void initVolumeList(VolumeList *node_p)
 /*
  * static
  * Format : volume_id volume_type "volume_path"
+ * # means comment
  */
-int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
+int parseVolumeConfFile(const int fd)
 {
 #define BUF_SIZE 1024
 
-  ssize_t error = NO_ERROR;
+  ssize_t error = NO_ERROR, buf_size = 0;
   byte buf[BUF_SIZE];
   byte c;
   int i = 0, field_len = 0;
@@ -82,6 +60,7 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
   VolumeID id = 0;
   VolumeType type = 0;
   String path;
+  Volume *volume_p = NULL;
 
   initString(&path, 128, NULL);
 
@@ -97,6 +76,7 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
     }
 
     i = 0;
+    buf_size = error;
 
     do {
       c = buf[i];
@@ -135,7 +115,7 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
 
           break;
         case P_VOLUME_TYPE_START:
-          if (field_len < 1) {
+          if (field_len < 1 || type < PRIMARY_VOLUME || type >= LAST_VOLUME_TYPE) {
             error = ER_VM_CONF_ERROR;
             goto end;
           }
@@ -159,12 +139,23 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
             goto end;
           }
 
-          // TODO : one line parse end, load volume,
+          // one line parse end, load volume
+          volume_p = loadVolume(id, type, &path);
+          if (volume_p == NULL) {
+            // TODO : use error manager
+            error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+            goto end;
+          }
+
+          error = addVolumeToManager(volume_p);
+          if (error != NO_ERROR) {
+            goto end;
+          }
 
           //reset parse vars
           id = 0;
           type = 0;
-          resetString(&path)
+          resetString(&path);
 
           status = P_VOLUME_PATH_END;
         } else {
@@ -178,6 +169,7 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
         case P_VOLUME_ID_START:
           if (c >= '0' && c <= '9') {
             id = id * 10 + c - '0';
+            ++field_len;
           } else {
             error = ER_VM_CONF_ERROR;
             goto end;
@@ -190,6 +182,7 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
         case P_VOLUME_TYPE_START:
           if (c >= '0' && c <= '9') {
             type = type * 10 + c - '0';
+            ++field_len;
           } else {
             error = ER_VM_CONF_ERROR;
             goto end;
@@ -202,6 +195,10 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
             goto end;
           }
 
+          ++field_len;
+
+          break;
+        case P_COMMENT:
           break;
         default:
           error = ER_VM_CONF_ERROR;
@@ -210,7 +207,7 @@ int parseVolumeConfFile(VolumeManager *manager_p, const int fd)
 
         break;
       }
-    } while(++i < error);
+    } while(++i < buf_size);
   } while(true);
 
   if (status != P_VOLUME_ID_START && status != P_VOLUME_PATH_END && status != P_COMMENT) {
@@ -229,6 +226,48 @@ end:
   return (int)error;
 
 #undef BUF_SIZE
+}
+
+/*
+ * static
+ */
+int addVolumeToManager(Volume *vol_p)
+{
+  int error = NO_ERROR;
+  VolumeList *list_p = NULL;
+  VolumeList *head_p = NULL;
+
+  assert(manager_p != NULL && vol_p != NULL
+      && vol_p->type >= PRIMARY_VOLUME && vol_p->type <  LAST_VOLUME_TYPE);
+
+  list_p = (VolumeList*)malloc(sizeof(VolumeList));
+  if (list_p == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  list_p->vol_p = vol_p;
+  list_p->next_p = NULL;
+
+  if (vol_p->type == PRIMARY_VOLUME || vol_p->type == SECONDARY_VOLUME) {
+    head_p = &manager_p->data_vol;
+  } else if (vol_p->type == LOG_VOLUME) {
+    head_p = &manager_p->log_vol;
+  } else {
+    head_p = &manager_p->tmp_vol;
+  }
+
+  list_p->next_p = head_p->next_p;
+  head_p->next_p = list_p;
+
+end:
+
+  return error;
+}
+
+VolumeManager *getVolumeManager()
+{
+  return manager_p;
 }
 
 int initVolumeManager(const char *conf_file_p)
@@ -266,10 +305,14 @@ int initVolumeManager(const char *conf_file_p)
     manager_p->log_count = 0;
     manager_p->tmp_count = 0;
     initVolumeList(&manager_p->data_vol);
-    initVolumeList(&manager_p->log_count);
+    initVolumeList(&manager_p->log_vol);
     initVolumeList(&manager_p->tmp_vol);
 
-    // TODO : load the volume info from conf file
+    // load the volume info from conf file
+    error = parseVolumeConfFile(manager_p->conf_file_fd);
+    if (error != NO_ERROR) {
+      goto end;
+    }
   }
 
 end:
@@ -304,8 +347,8 @@ void destroyVolumeManager()
       while (cur_p) {
         next_p = cur_p->next_p;
 
-        // TODO : free list and volume
-        free(cur_p->vol_p);
+        // free list and volume
+        destroyVolume(cur_p->vol_p);
         free(cur_p);
 
         cur_p = next_p;

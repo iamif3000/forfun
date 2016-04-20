@@ -5,6 +5,7 @@
  *      Author: duping
  */
 
+#include <sys/types.h>
 #include "../common/type.h"
 #include "../base/base_string.h"
 

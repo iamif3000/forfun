@@ -16,9 +16,7 @@ void lock_int(volatile int *i)
 {
   assert(i != NULL);
 
-  while (compare_and_swap_value(i, 0, 1) == 1) {
-    sched_yield();
-  }
+  while (compare_and_swap_value(i, 0, 1) == 1);
 }
 
 bool try_lock_int(volatile int *i)

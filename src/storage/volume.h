@@ -15,6 +15,7 @@
 #define INIT_VOLUME(v_p) \
   do { \
     (v_p)->id = 0; \
+    (v_p)->type = LAST_VOLUME_TYPE; \
     (v_p)->fd = 0; \
     INIT_STRING(&(v_p)->path); \
   } while (0)
@@ -30,7 +31,8 @@
     (h_p)->current_alloc_page = 0; \
     (h_p)->allocatd_page_count = 0; \
     (h_p)->continuous_alloc = true; \
-    (h_p)->file_tracker = { 0, 0 }; \
+    (h_p)->file_tracker.vol_id = 0; \
+    (h_p)->file_tracker.pg_id = 0; \
   } while(0)
 
 #define NULL_VOLUMEID -1
@@ -51,6 +53,7 @@ enum volume_type {
 
 struct volume {
   VolumeID id;
+  VolumeType type;
   int fd;
   String path;
 };
@@ -68,8 +71,9 @@ struct volume_header {
   FileID file_tracker;
 };
 
-Volume *createVolume(const VolumeID id, const String *path_p, const count_t size);
-Volume *loadVolume(const VolumeID id, const String *path_p);
+Volume *createVolume(const VolumeID id, const VolumeType type, const String *path_p, const count_t size);
+void destroyVolume(Volume *vol_p);
+Volume *loadVolume(const VolumeID id, const VolumeType type, const String *path_p);
 int formatVolume(const Volume *volume_p, const VolumeType type);
 int allocPages(Volume *volume_p, id64_t *pages_p, count_t pages_count);
 

@@ -36,6 +36,9 @@ end:
   return ret_str;
 }
 
+/*
+ * size should be big enough to hold cstr and '\0'
+ */
 String *allocString(count_t size, const char *cstr)
 {
   String *str = NULL;
@@ -43,7 +46,7 @@ String *allocString(count_t size, const char *cstr)
 
   assert(size > 0);
 
-  size = ALIGN_DEFAULT(size + 1);
+  size = ALIGN_DEFAULT(size);
 
   str = (String*)string_alloc(sizeof(String));
   if (str == NULL) {
@@ -56,7 +59,7 @@ String *allocString(count_t size, const char *cstr)
   }
 
   if (cstr != NULL) {
-    while (*cstr != '\0' && i < size) {
+    while (*cstr != '\0' && i < size - 1) {
       str->bytes[i] = *cstr;
 
       ++cstr;
@@ -100,15 +103,16 @@ void freeString(String *str)
 /*
  * for init String on stack
  * don't call refString on the String.
+ * size should be big enough to hold cstr and '\0'
  */
-int initString(String *str, count_t size, const char *str)
+int initString(String *str, count_t size, const char *cstr)
 {
   int error = NO_ERROR;
   int i = 0;
 
   assert(str != NULL && size > 0);
 
-  size = ALIGN_DEFAULT(size + 1);
+  size = ALIGN_DEFAULT(size);
 
   str->bytes = (byte*)string_alloc(size);
   if (str->bytes == NULL) {
@@ -116,11 +120,11 @@ int initString(String *str, count_t size, const char *str)
     goto end;
   }
 
-  if (str != NULL) {
-    while (*str != '\0' && i < size) {
-      str->bytes[i] = *str;
+  if (cstr != NULL) {
+    while (*cstr != '\0' && i < size - 1) {
+      str->bytes[i] = *cstr;
 
-      ++str;
+      ++cstr;
       ++i;
     }
   }
@@ -205,7 +209,7 @@ int copyString(String *dst, const String *src)
   if (dst->size < src->size) {
     (void)destroyString(dst);
 
-    error = initString(dst, src->size);
+    error = initString(dst, src->size, NULL);
     if (error != NO_ERROR) {
       goto end;
     }
@@ -255,7 +259,7 @@ end:
 
 void resetString(String *str)
 {
-  assert(str != NULL && str->bytes != NULL && str->size != NULL && str->ref_count == 1);
+  assert(str != NULL && str->bytes != NULL && str->size != 0 && str->ref_count == 1);
 
   str->length = 0;
   str->bytes[str->length] = '\0';

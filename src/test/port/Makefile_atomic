@@ -17,4 +17,4 @@ atomic.o : ../../port/atomic.h ../../port/atomic.c
 	
 .PHONY : clean
 clean : 
-	-rm atomic_test $(objects)
+	rm -rf atomic_test $(objects)

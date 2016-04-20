@@ -1,9 +1,14 @@
+
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "../common/common.h"
 #include "../port/os_file.h"
 #include "page.h"
 #include "volume.h"
 
-static int createVolumeFile(const String *path_p, const count_t size);
+static int createVolumeFile(const String *path_p, count_t size);
 static int setVolumeHeader(const Volume *vol_p, const VolumeHeader *vol_header_p);
 static int getVolumeHeader(const Volume *vol_p, VolumeHeader *vol_header_p);
 
@@ -11,7 +16,7 @@ static int getVolumeHeader(const Volume *vol_p, VolumeHeader *vol_header_p);
  * static
  * return : < 0 error, > 0 fd
  */
-int createVolumeFile(const String *path_p, const count_t size)
+int createVolumeFile(const String *path_p, count_t size)
 {
   int error = NO_ERROR;
 
@@ -21,7 +26,7 @@ int createVolumeFile(const String *path_p, const count_t size)
     size = LEAST_VOLUME_SIZE;
   }
 
-  error = createFile(path_p, size);
+  error = createFile(path_p->bytes, size);
   if (error < 0) {
     goto end;
   }
@@ -38,7 +43,7 @@ int setVolumeHeader(const Volume *vol_p, const VolumeHeader *vol_header_p)
   do { \
     convert = (uint64_t)(ui64); \
     convert = htonll(convert); \
-    error = writeFile(vol_p->fd, &convert, sizeof(convert)); \
+    error = writeFile(vol_p->fd, (byte*)&convert, sizeof(convert)); \
     if (error != NO_ERROR) { \
       goto end; \
     } \
@@ -83,7 +88,7 @@ int getVolumeHeader(const Volume *vol_p, VolumeHeader *vol_header_p)
 {
 #define READ_UINT64(ui64) \
   do { \
-    error = readFile(vol_p->fd, &convert, sizeof(convert)); \
+    error = readFile(vol_p->fd, (byte*)&convert, sizeof(convert)); \
     if (error != NO_ERROR) { \
       goto end; \
     } \
@@ -124,7 +129,7 @@ end:
 #undef READ_UINT64
 }
 
-Volume *createVolume(const VolumeID id, const String *path_p, const count_t size)
+Volume *createVolume(const VolumeID id, const VolumeType type, const String *path_p, const count_t size)
 {
   int error = NO_ERROR;
   Volume *vol_p = NULL;
@@ -141,7 +146,7 @@ Volume *createVolume(const VolumeID id, const String *path_p, const count_t size
   INIT_VOLUME(vol_p);
 
   vol_p->id = id;
-  error = initString(&vol_p->path, path_p->size);
+  error = initString(&vol_p->path, path_p->size, NULL);
   if (error != NO_ERROR) {
     goto end;
   }
@@ -175,13 +180,58 @@ end:
   return vol_p;
 }
 
-Volume *loadVolume(const VolumeID id, const String *path_p)
+void destroyVolume(Volume *vol_p)
 {
+  assert(vol_p != NULL);
+
+  if (vol_p->path.bytes != NULL) {
+    (void)destroyString(&vol_p->path);
+  }
+
+  if (vol_p->fd > 0) {
+    (void)closeFile(vol_p->fd);
+  }
+
+  free(vol_p);
+}
+
+Volume *loadVolume(const VolumeID id, const VolumeType type, const String *path_p)
+{
+  int error = NO_ERROR;
   Volume *vol_p = NULL;
 
   assert(!IS_VOLUMEID_NULL(id) && path_p != NULL);
 
-  // TODO
+  vol_p = (Volume*)malloc(sizeof(Volume));
+  if (vol_p == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  memset(vol_p, 0, sizeof(Volume));
+
+  error = initString(&vol_p->path, path_p->length + 1, path_p->bytes);
+  if (error != NO_ERROR) {
+    goto end;
+  }
+
+  error = openFile(path_p->bytes);
+  if (error < 0) {
+    goto end;
+  }
+
+  vol_p->fd = error;
+  error = NO_ERROR;
+
+  vol_p->id = id;
+  vol_p->type = type;
+
+end:
+
+  if (error != NO_ERROR && vol_p != NULL) {
+    destroyVolume(vol_p);
+    vol_p = NULL;
+  }
 
   return vol_p;
 }

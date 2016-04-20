@@ -52,7 +52,7 @@ int copyString(String *dst, const String *src);
 int appendByte(String *str, byte b);
 void resetString(String *str);
 
-int initString(String *str, count_t size, const char *str);
+int initString(String *str, count_t size, const char *cstr);
 int destroyString(String *str);
 
 #endif /* BASE_STRING_H_ */

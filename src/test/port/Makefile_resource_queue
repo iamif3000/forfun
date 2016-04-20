@@ -20,4 +20,4 @@ align.o : ../../common/align.c ../../common/align.h
 	
 .PHONY : clean
 clean : 
-	-rm resource_queue_test $(objects)
+	rm -rf resource_queue_test $(objects)
