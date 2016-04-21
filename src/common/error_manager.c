@@ -269,6 +269,23 @@ end:
   return error;
 }
 
+bool hasError()
+{
+  Thread *thread_p = NULL;
+  ErrorList *next_p = NULL;
+
+  thread_p = getThread();
+  if (thread_p == NULL) {
+    return true;
+  }
+
+  if (thread_p->err_list_p != NULL) {
+    return true;
+  }
+
+  return false;
+}
+
 int getErrorListBlockCount()
 {
   int i = 0;

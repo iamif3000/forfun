@@ -29,6 +29,8 @@ int createFile(const char *path_p, count_t size)
   error = open(path_p, O_CREAT | O_EXCL | O_RDWR | O_NONBLOCK, S_IRUSR | S_IWUSR);
   if (error < 0) {
     error = ER_OS_FILE_CREATE_FAIL;
+    SET_ERROR(error);
+
     goto Error;
   }
 
@@ -38,7 +40,7 @@ int createFile(const char *path_p, count_t size)
   if (size > 0) {
     // write 1 byte at the end
     error = writeFileToOffset(fd, "\0", 1, size - 1);
-    if (error != NO_ERROR) {
+    if (error < 0) {
       goto Error;
     }
 
@@ -66,6 +68,7 @@ int removeFile(const char *path_p)
   error = unlink(path_p);
   if (error < 0) {
     error = ER_OS_FILE_REMOVE_FAIL;
+    SET_ERROR(error);
   }
 
   return error;
@@ -83,6 +86,7 @@ int openFile(const char *path_p)
   error = open(path_p, O_RDWR | O_NONBLOCK);
   if (error < 0) {
     error = ER_OS_FILE_OPEN_FAIL;
+    SET_ERROR(error);
   }
 
   return error;
@@ -97,6 +101,7 @@ int closeFile(const int fd)
   error = close(fd);
   if (error < 0) {
     error = ER_OS_FILE_CLOSE_FAIL;
+    SET_ERROR(error);
   }
 
   return error;
@@ -118,6 +123,8 @@ ssize_t readFile(const int fd, byte *bytes, const count_t count)
         continue;
       default:
         error = ER_OS_FILE_READ_FAIL;
+        SET_ERROR(error);
+
         goto Error;
       }
     } else if (ret > 0) {
@@ -175,6 +182,8 @@ ssize_t writeFile(const int fd, const byte *bytes, const count_t count)
         continue;
       default:
         error = ER_OS_FILE_WRITE_FAIL;
+        SET_ERROR(error);
+
         goto Error;
       }
     } else if (ret > 0) {
@@ -206,7 +215,7 @@ ssize_t writeFileToOffset(const int fd, const byte *bytes, const count_t count, 
   }
 
   error = writeFile(fd, bytes, count);
-  if (error < NO_ERROR) {
+  if (error < 0) {
     goto Error;
   }
 

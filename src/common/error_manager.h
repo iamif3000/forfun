@@ -5,6 +5,7 @@
  *      Author: duping
  */
 
+#include "type.h"
 #include "error.h"
 
 #ifndef ERROR_MANAGER_H_
@@ -36,6 +37,8 @@ void destroyErrorManagerEnv();
 int recordError(const int error_code, const char *file_p, const int line);
 int removeLastError();
 int clearErrors();
+
+bool hasError();
 
 // test only
 int getErrorListBlockCount();

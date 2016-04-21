@@ -81,6 +81,7 @@ int insertToHashTableImp(HashTable *hash_tab_p, HashBase *insert_base, const Has
   error = findInHashTable(hash_tab_p, key, NULL);
   if (error == NO_ERROR) {
     error = ER_HASH_DUPLICATE_KEY;
+    SET_ERROR(error);
   }
 
   if (error != ER_HASH_NO_SUCH_KEY) {
@@ -90,6 +91,8 @@ int insertToHashTableImp(HashTable *hash_tab_p, HashBase *insert_base, const Has
   new_node_p = allocCollisionListNode(hash_tab_p);
   if (new_node_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -103,10 +106,12 @@ int insertToHashTableImp(HashTable *hash_tab_p, HashBase *insert_base, const Has
   error = findAndDo(hash_tab_p, key, findInHashTableDoFunc, NULL, false);
   if (error == NO_ERROR) {
     error = ER_HASH_DUPLICATE_KEY;
+    SET_ERROR(error);
   }
 
   if (error == ER_HASH_NO_SUCH_KEY) {
     error = NO_ERROR;
+    removeLastError();
 
     new_node_p->next_p = entry_p->head_p;
     entry_p->head_p = new_node_p;
@@ -188,6 +193,7 @@ int insertToHashTableImp(HashTable *hash_tab_p, HashBase *insert_base, const Has
       } else {
         // let error pass through
         error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+        SET_ERROR(error);
       }
     }
 
@@ -514,6 +520,7 @@ int findAndDo(HashTable *hash_tab_p, const HashValue key, FIND_DO_FUNC do_func, 
 
   if (error == NO_ERROR && !found) {
     error = ER_HASH_NO_SUCH_KEY;
+    SET_ERROR(error);
   }
 
   return error;
@@ -534,6 +541,7 @@ HashTable *createHashTable(count_t reserve_entries, HashFunc hash_func_p, Compar
   htable_p = (HashTable*)malloc(sizeof(HashTable));
   if (htable_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -544,6 +552,7 @@ HashTable *createHashTable(count_t reserve_entries, HashFunc hash_func_p, Compar
   htable_p->free_list_area = (HashCollisionListArea*)malloc(sizeof(HashCollisionListArea) + sizeof(HashCollisionList) * FREE_COLLISION_LIST_ALLOC);
   if (htable_p->free_list_area == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -564,6 +573,7 @@ HashTable *createHashTable(count_t reserve_entries, HashFunc hash_func_p, Compar
   hbase_p->entries_p = (HashEntry*)malloc(sizeof(HashEntry) * reserve_entries);
   if (hbase_p->entries_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -899,6 +909,7 @@ int removeFromHashTable(HashTable *hash_tab_p, const HashValue key)
 
   if (!found) {
     error = ER_HASH_NO_SUCH_KEY;
+    SET_ERROR(error);
   }
 
   resumeRehash(hash_tab_p);
@@ -954,6 +965,7 @@ int mapHashTable(HashTable *hash_tab_p, MapFunc map_func_p, void *arg, const boo
           if (error != NO_ERROR) {
             if (ignore_error) {
               error = NO_ERROR;
+              removeLastError();
             } else {
               break;
             }

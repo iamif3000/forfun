@@ -40,6 +40,7 @@ int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
     slot->end = ntohll(*(offset_t*)pos);
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
+    SET_ERROR(error);
   }
 
   return error;
@@ -77,6 +78,7 @@ int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
     memcpy(pos, &end, sizeof(end));
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
+    SET_ERROR(error);
   }
 
   return error;
@@ -148,6 +150,7 @@ int getSlotPageRecord(const SlotPage *slot_page_p, const number_t slot_number, S
     record_p->record_p = slot_page_p->page_p->bytes + record_p->slot.start;
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
+    SET_ERROR(error);
   }
 
 end:
@@ -186,6 +189,7 @@ int setSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, const b
     }
   } else {
     error = ER_SLOT_PAGE_NOT_ENOUGH_SPACE;
+    SET_ERROR(error);
   }
 
 end:
@@ -230,6 +234,7 @@ int updateSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, cons
     // TODO : consider OVERFLOW, REDIRECT
 
     error = ER_SLOT_PAGE_NOT_ENOUGH_SPACE;
+    SET_ERROR(error);
   }
 
 end:
@@ -284,6 +289,7 @@ int appendSlotPageRecord(SlotPage *slot_page_p, const byte *record_p, const coun
     // TODO : consider OVERFLOW
 
     error = ER_SLOT_PAGE_NOT_ENOUGH_SPACE;
+    SET_ERROR(error);
   }
 
 end:
@@ -320,6 +326,7 @@ int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot)
     (void)setSlotPageHeader(slot_page_p, &header);
   } else {
     error = ER_SLOT_PAGE_NOT_ENOUGH_SPACE;
+    SET_ERROR(error);
   }
 
 end:

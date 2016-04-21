@@ -1,7 +1,7 @@
-objects = os_file_test.o os_file.o base_string.o atomic.o align.o
-LIBS =
+objects = os_file_test.o os_file.o base_string.o atomic.o align.o error_manager.o thread.o
+LIBS = -lpthread
 STD = c99
-CC = gcc -std=$(STD)
+CC = gcc -std=$(STD) -g
 #VPATH = ../common/:../../port/
 
 os_file_test : $(objects)
@@ -17,6 +17,10 @@ atomic.o : ../../port/atomic.h ../../port/atomic.c
 	$(CC) -c ../../port/atomic.c
 align.o : ../../common/align.h ../../common/align.c
 	$(CC) -c ../../common/align.c
+error_manager.o : ../../common/error_manager.c ../../common/error_manager.h
+	$(CC) -c ../../common/error_manager.c
+thread.o : ../../port/thread.c ../../port/thread.h
+	$(CC) -c ../../port/thread.c
 	
 .PHONY : clean
 clean : 

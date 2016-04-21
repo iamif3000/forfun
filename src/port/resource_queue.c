@@ -181,6 +181,7 @@ int initResource(RQResource *r_p)
   error = pthread_mutex_init(&r_p->mutex, NULL);
   if (error < 0) {
     error = ER_RQ_CREATE_FAIL;
+    SET_ERROR(error);
   }
 
   return error;
@@ -219,6 +220,7 @@ int expandHolderList()
   block_p = (RQHolderListBlock*)malloc(sizeof(RQHolderListBlock) + sizeof(RQHolderList) * ALLOC_COUNT);
   if (block_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -359,6 +361,8 @@ void initHolderList(RQHolderList *list_p)
   list_p->next_p = list_p->prev_p = NULL;
 
   initSubject(&list_p->subject_p);
+
+  list_p->error = NO_ERROR;
 }
 
 /*
@@ -376,6 +380,7 @@ int expandRqList()
   rqb_p = malloc(sizeof(ResourceQueueBlock) + sizeof(ResourceQueue) * ALLOC_COUNT);
   if (rqb_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -510,6 +515,7 @@ int wait_func_wrapper(void *arg_p)
   error = pthread_cond_wait(func_arg_p->cond_p, func_arg_p->mutex_p);
   if (error < 0) {
     error = ER_RQ_LOCK_ERROR;
+    SET_ERROR(error);
   }
 
   return error;
@@ -530,8 +536,10 @@ int timed_wait_func_wrapper(void *arg_p)
   error = pthread_cond_timedwait(func_arg_p->cond_p, func_arg_p->mutex_p, func_arg_p->time_s_p);
   if (error == ETIMEDOUT) {
     error = ER_RQ_LOCK_TIMEOUT;
+    SET_ERROR(error);
   } else if (error < 0) {
     error = ER_RQ_LOCK_ERROR;
+    SET_ERROR(error);
   }
 
   return error;
@@ -550,6 +558,7 @@ int wake_func_wrapper(void *arg_p)
   error = pthread_cond_signal(func_arg_p->cond_p);
   if (error < 0) {
     error = ER_RQ_LOCK_ERROR;
+    SET_ERROR(error);
   } else if (func_arg_p->error != NO_ERROR) {
     // for waking up the thread for abnormal situations
     error = func_arg_p->error;
@@ -652,6 +661,7 @@ ResourceQueue *createResourceQueue(void *resource_p, const char *name_p)
     rq_p->name_p = allocString(strlen(name_p), name_p);
     if (rq_p->name_p == NULL) {
       error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      SET_ERROR(error);
 
       goto end;
     }
@@ -694,6 +704,7 @@ int requestResource(ResourceQueue *rq_p, QRRequestType type, void **resource_p)
   wait_list_p = allocHolderList();
   if (wait_list_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -704,6 +715,7 @@ int requestResource(ResourceQueue *rq_p, QRRequestType type, void **resource_p)
   assert(thread_p != NULL);
   if (thread_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -720,6 +732,12 @@ int requestResource(ResourceQueue *rq_p, QRRequestType type, void **resource_p)
       appendToWaitList(rq_p, wait_list_p);
 
       error = wait_list_p->subject_p.wait_func_p(&func_arg);
+
+      if (wait_list_p->error != NO_ERROR) {
+        error = wait_list_p->error;
+        SET_ERROR(error);
+      }
+
       if (error != NO_ERROR) {
         removeFromWaitList(rq_p, wait_list_p);
       }
@@ -735,6 +753,12 @@ int requestResource(ResourceQueue *rq_p, QRRequestType type, void **resource_p)
       appendToWaitList(rq_p, wait_list_p);
 
       error = wait_list_p->subject_p.wait_func_p(&func_arg);
+
+      if (wait_list_p->error != NO_ERROR) {
+        error = wait_list_p->error;
+        SET_ERROR(error);
+      }
+
       if (error != NO_ERROR) {
         removeFromWaitList(rq_p, wait_list_p);
       }
@@ -742,6 +766,7 @@ int requestResource(ResourceQueue *rq_p, QRRequestType type, void **resource_p)
     }
   } else {
     error = ER_RQ_LOCK_ERROR;
+    SET_ERROR(error);
   }
 
   if (error == NO_ERROR) {
@@ -781,6 +806,7 @@ int timedRequestResource(ResourceQueue *rq_p, QRRequestType type, int timeout, v
   wait_list_p = allocHolderList();
   if (wait_list_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -793,6 +819,7 @@ int timedRequestResource(ResourceQueue *rq_p, QRRequestType type, int timeout, v
   assert(thread_p != NULL);
   if (thread_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -811,6 +838,7 @@ int timedRequestResource(ResourceQueue *rq_p, QRRequestType type, int timeout, v
 
       if (ms > timeout) {
         error = ER_RQ_LOCK_TIMEOUT;
+        SET_ERROR(error);
 
         goto end;
       }
@@ -830,6 +858,7 @@ int timedRequestResource(ResourceQueue *rq_p, QRRequestType type, int timeout, v
 
     if (ms > timeout) {
       error = ER_RQ_LOCK_TIMEOUT;
+      SET_ERROR(error);
 
       goto end;
     }
@@ -843,6 +872,12 @@ int timedRequestResource(ResourceQueue *rq_p, QRRequestType type, int timeout, v
       appendToWaitList(rq_p, wait_list_p);
 
       error = wait_list_p->subject_p.timed_wait_func_p(&func_arg);
+
+      if (wait_list_p->error != NO_ERROR) {
+        error = wait_list_p->error;
+        SET_ERROR(error);
+      }
+
       if (error != NO_ERROR) {
         removeFromWaitList(rq_p, wait_list_p);
       }
@@ -858,6 +893,12 @@ int timedRequestResource(ResourceQueue *rq_p, QRRequestType type, int timeout, v
       appendToWaitList(rq_p, wait_list_p);
 
       error = wait_list_p->subject_p.timed_wait_func_p(&func_arg);
+
+      if (wait_list_p->error != NO_ERROR) {
+        error = wait_list_p->error;
+        SET_ERROR(error);
+      }
+
       if (error != NO_ERROR) {
         removeFromWaitList(rq_p, wait_list_p);
       }
@@ -892,6 +933,7 @@ int releaseResource(ResourceQueue *rq_p)
   error = pthread_mutex_lock(&rq_p->resource.mutex);
   if (error < 0) {
     error = ER_RQ_LOCK_ERROR;
+    SET_ERROR(error);
 
     goto end;
   }
@@ -981,7 +1023,9 @@ void rqWakeUpAllWaitingThread(ResourceQueue *rq_p)
 
     arg.cond_p = &wait_list_p->subject_p.thread->cond;
 
-    removeFromWaitList(rq_p, wait_list_p);
+    //removeFromWaitList(rq_p, wait_list_p);
+
+    wait_list_p->error = ER_RQ_ABNORMAL_QUIT;
 
     wait_list_p->subject_p.wake_func_p(&arg);
   }

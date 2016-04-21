@@ -1,4 +1,4 @@
-objects = base_string_test.o base_string.o atomic.o align.o
+objects = base_string_test.o base_string.o atomic.o align.o error_manager.o thread.o
 LIBS = -lpthread
 STD = c99
 CC = cc -std=$(STD)
@@ -14,6 +14,10 @@ atomic.o : ../../port/atomic.c ../../port/atomic.h
 	$(CC) -c ../../port/atomic.c
 align.o : ../../common/align.c ../../common/align.h
 	$(CC) -c ../../common/align.c
+error_manager.o : ../../common/error_manager.c ../../common/error_manager.h
+	$(CC) -c ../../common/error_manager.c
+thread.o : ../../port/thread.c ../../port/thread.h
+	$(CC) -c ../../port/thread.c
 	
 .PHONY : clean
 clean : 

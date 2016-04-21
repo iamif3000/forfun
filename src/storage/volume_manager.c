@@ -85,6 +85,8 @@ int parseVolumeConfFile(const int fd)
         if (status != P_COMMENT) {
           if (status != P_VOLUME_ID_START && status != P_VOLUME_PATH_END) {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
           }
 
@@ -95,6 +97,8 @@ int parseVolumeConfFile(const int fd)
       case '\n':
         if (status != P_COMMENT && status != P_VOLUME_PATH_END) {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
         }
 
@@ -108,6 +112,8 @@ int parseVolumeConfFile(const int fd)
         case P_VOLUME_ID_START:
           if (field_len < 1) {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
           }
 
@@ -117,6 +123,8 @@ int parseVolumeConfFile(const int fd)
         case P_VOLUME_TYPE_START:
           if (field_len < 1 || type < PRIMARY_VOLUME || type >= LAST_VOLUME_TYPE) {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
           }
 
@@ -136,14 +144,17 @@ int parseVolumeConfFile(const int fd)
         } else if (status == P_VOLUME_PATH_START) {
           if (field_len < 1) {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
           }
 
           // one line parse end, load volume
           volume_p = loadVolume(id, type, &path);
           if (volume_p == NULL) {
-            // TODO : use error manager
             error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+            SET_ERROR(error);
+
             goto end;
           }
 
@@ -160,6 +171,8 @@ int parseVolumeConfFile(const int fd)
           status = P_VOLUME_PATH_END;
         } else {
           error = ER_VM_CONF_ERROR;
+          SET_ERROR(error);
+
           goto end;
         }
 
@@ -172,6 +185,8 @@ int parseVolumeConfFile(const int fd)
             ++field_len;
           } else {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
           }
 
@@ -185,6 +200,8 @@ int parseVolumeConfFile(const int fd)
             ++field_len;
           } else {
             error = ER_VM_CONF_ERROR;
+            SET_ERROR(error);
+
             goto end;
           }
 
@@ -202,6 +219,8 @@ int parseVolumeConfFile(const int fd)
           break;
         default:
           error = ER_VM_CONF_ERROR;
+          SET_ERROR(error);
+
           goto end;
         }
 
@@ -212,6 +231,8 @@ int parseVolumeConfFile(const int fd)
 
   if (status != P_VOLUME_ID_START && status != P_VOLUME_PATH_END && status != P_COMMENT) {
     error = ER_VM_CONF_ERROR;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -243,6 +264,8 @@ int addVolumeToManager(Volume *vol_p)
   list_p = (VolumeList*)malloc(sizeof(VolumeList));
   if (list_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -280,6 +303,7 @@ int initVolumeManager(const char *conf_file_p)
     manager_p = (VolumeManager*)malloc(sizeof(VolumeManager));
     if (manager_p == NULL) {
       error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      SET_ERROR(error);
 
       goto end;
     }

@@ -53,6 +53,8 @@ struct rq_holder_list {
   QRRequestType req_type;
 
   RQSubject subject_p;
+
+  int error;
 };
 
 struct rq_resource {

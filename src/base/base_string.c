@@ -117,6 +117,8 @@ int initString(String *str, count_t size, const char *cstr)
   str->bytes = (byte*)string_alloc(size);
   if (str->bytes == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -237,6 +239,8 @@ int appendByte(String *str, byte b)
     buf_p = (byte*)string_alloc(sizeof(byte) * new_size);
     if (buf_p == NULL) {
       error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      SET_ERROR(error);
+
       goto end;
     }
 

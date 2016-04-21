@@ -11,6 +11,7 @@
 #include <assert.h>
 
 #include "error.h"
+#include "error_manager.h"
 #include "type.h"
 #include "function.h"
 #include "align.h"

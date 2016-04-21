@@ -170,6 +170,7 @@ int initPageCache(PageCache *pc_p)
   pc_p->page_res.rq_p = createResourceQueue(&pc_p->page_res.page, NULL);
   if (pc_p->page_res.rq_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
   }
 
   return error;
@@ -218,6 +219,7 @@ PageManager *getPageManager()
     page_manager_p = (PageManager*)malloc(sizeof(PageManager));
     if (page_manager_p == NULL) {
       error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      SET_ERROR(error);
 
       goto end;
     }
@@ -316,6 +318,7 @@ Page *fixPage(const PageID page_id, const PageFixType fix_type)
         page_cache_p = allocPageCache();
         if (page_cache_p == NULL) {
           error = ER_PC_NO_MORE_CACHE_ROOM;
+          SET_ERROR(error);
 
           // find victims from lru list
           if (manager_p->lru_zoneB_bottom_p != NULL) {
@@ -333,6 +336,7 @@ Page *fixPage(const PageID page_id, const PageFixType fix_type)
                 page_cache_p->page_res.page.id = page_id;
 
                 error = NO_ERROR;
+                removeLastError();
               }
             }
 

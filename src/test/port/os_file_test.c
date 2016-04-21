@@ -15,33 +15,35 @@
 int main(void)
 {
   int error = 0;
-  const char file_name[] = "/tmp/os_file_test";
+  const char file_name[] = "./os_file_test";
   String *str = NULL;
   int fd;
+
+  printf("os_file_test start...\n");
 
   (void)remove(file_name);
   fd = createFile(file_name, FILE_SIZE);
   if (fd < 0) {
-    error = 1;
+    error = -1;
     goto end;
   }
 
   fd = closeFile(fd);
   if (fd < 0) {
-    error = 2;
+    error = -2;
     goto end;
   }
 
   fd = openFile(file_name);
   if (fd < 0) {
-    error = 3;
+    error = -3;
     goto end;
   }
 
   for (int i = 0; i < (FILE_SIZE >> 2); ++i) {
     error = writeFileToOffset(fd, (byte*)&i, sizeof(i), i << 2);
-    if (error != NO_ERROR) {
-      error = 4;
+    if (error < 0) {
+      error = -4;
       goto end;
     }
   }
@@ -49,13 +51,13 @@ int main(void)
   int j;
   for (int i = 0; i < (FILE_SIZE >> 2); ++i) {
     error = readFileFromOffset(fd, (byte*)&j, sizeof(i), i << 2);
-    if (error != NO_ERROR) {
-      error = 5;
+    if (error < 0) {
+      error = -5;
       goto end;
     }
 
     if (i != j) {
-      error = 6;
+      error = -6;
       goto end;
     }
 
@@ -74,6 +76,10 @@ end:
   }
 
   removeFile(file_name);
+
+  if (error > 0) {
+    error = 0;
+  }
 
   if (error  == NO_ERROR) {
     printf("os_file_test successes!\n");

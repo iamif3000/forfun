@@ -1,4 +1,4 @@
-objects = volume_manager_test.o volume_manager.o volume.o os_file.o base_string.o atomic.o function.o align.o
+objects = volume_manager_test.o volume_manager.o volume.o os_file.o base_string.o atomic.o function.o align.o error_manager.o thread.o 
 LIBS =
 STD = c99
 CC = gcc -g -std=$(STD)
@@ -23,6 +23,10 @@ function.o : ../../common/function.h ../../common/function.c
 	$(CC) -c ../../common/function.c
 align.o : ../../common/align.h ../../common/align.c
 	$(CC) -c ../../common/align.c
+error_manager.o : ../../common/error_manager.c ../../common/error_manager.h
+	$(CC) -c ../../common/error_manager.c
+thread.o : ../../port/thread.c ../../port/thread.h
+	$(CC) -c ../../port/thread.c
 	
 .PHONY : clean
 clean : 

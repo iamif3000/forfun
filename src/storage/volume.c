@@ -59,6 +59,8 @@ int setVolumeHeader(const Volume *vol_p, const VolumeHeader *vol_header_p)
   ofst = seekFile(vol_p->fd, 0, SEEK_SET);
   if (ofst < 0) {
     error = ER_OS_FILE_SEEK_FAIL;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -105,6 +107,8 @@ int getVolumeHeader(const Volume *vol_p, VolumeHeader *vol_header_p)
   ofst = seekFile(vol_p->fd, 0, SEEK_SET);
   if (ofst < 0) {
     error = ER_OS_FILE_SEEK_FAIL;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -140,6 +144,8 @@ Volume *createVolume(const VolumeID id, const VolumeType type, const String *pat
   vol_p = (Volume*)malloc(sizeof(Volume));
   if (vol_p == NULL) {
     error = ER_VOLUME_CREATE_VOLUME_FAIL;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -205,6 +211,8 @@ Volume *loadVolume(const VolumeID id, const VolumeType type, const String *path_
   vol_p = (Volume*)malloc(sizeof(Volume));
   if (vol_p == NULL) {
     error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
+
     goto end;
   }
 
@@ -319,6 +327,8 @@ int allocPages(Volume *volume_p, id64_t *pages_p, count_t pages_count)
 
   if (header.allocatd_page_count + pages_count > header.page_count) {
     error = ER_VOLUME_NOT_ENOUGH_PAGE;
+    SET_ERROR(error);
+
     goto end;
   }
 
