@@ -1,5 +1,5 @@
 objects = volume_manager_test.o volume_manager.o volume.o os_file.o base_string.o atomic.o function.o align.o error_manager.o thread.o 
-LIBS =
+LIBS = -lpthread
 STD = c99
 CC = gcc -g -std=$(STD)
 #VPATH = ../common/:../../port/
