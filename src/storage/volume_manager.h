@@ -43,8 +43,15 @@ struct volume_manager {
 int initVolumeManager(const char *conf_file_p);
 void destroyVolumeManager();
 
+Volume *createNewVolume(VolumeType type);
 int registerCreatedVolume(Volume *vol);
 Volume *getVolumeById(VolumeID id);
+
+int allocPages(PageID *pages_p, count_t pages_count, VolumeType type);
+int freePages(PageID *pages_p, count_t pages_count);
+
+int loadPage(const PageID page_id, byte *page_buf_p);
+int savePage(const PageID page_id, const byte *page_buf_p);
 
 // for test only
 VolumeManager *getVolumeManager();

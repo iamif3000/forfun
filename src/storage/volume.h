@@ -26,11 +26,8 @@
     (h_p)->volume_type = PRIMARY_VOLUME; \
     (h_p)->page_size = 0; \
     (h_p)->page_count = 0; \
-    (h_p)->page_map_start_page = 0; \
-    (h_p)->page_map_end_page = 0; \
-    (h_p)->current_alloc_page = 0; \
     (h_p)->allocatd_page_count = 0; \
-    (h_p)->continuous_alloc = true; \
+    (h_p)->current_alloc_page = 0; \
     (h_p)->file_tracker.vol_id = 0; \
     (h_p)->file_tracker.pg_id = 0; \
   } while(0)
@@ -63,11 +60,8 @@ struct volume_header {
   VolumeType volume_type;
   count_t page_size;
   count_t page_count;
-  id64_t page_map_start_page;
-  id64_t page_map_end_page;
-  id64_t current_alloc_page;
   count_t allocatd_page_count;
-  bool continuous_alloc;
+  id64_t current_alloc_page;
   FileID file_tracker;
 };
 
@@ -75,9 +69,10 @@ Volume *createVolume(const VolumeID id, const VolumeType type, const String *pat
 void destroyVolume(Volume *vol_p);
 Volume *loadVolume(const VolumeID id, const VolumeType type, const String *path_p);
 int formatVolume(const Volume *volume_p, const VolumeType type);
-int allocPages(Volume *volume_p, id64_t *pages_p, count_t pages_count);
+int allocPagesFromVolume(Volume *volume_p, id64_t *pages_p, const count_t pages_count);
+int freePagesToVolume(Volume *volume_p, const id64_t *pages_p, const count_t pages_count);
 
-int loadPage(const PageID page_id, byte *page_buf_p);
-int savePage(const PageID page_id, const byte *page_buf_p);
+int loadPageFromVolume(Volume *volume_p, const id64_t page_id, byte *page_buf_p);
+int savePageToVolume(Volume *volume_p,const id64_t page_id, const byte *page_buf_p);
 
 #endif /* VOLUME_H_ */

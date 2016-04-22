@@ -16,6 +16,7 @@
 #include "function.h"
 #include "align.h"
 #include "id.h"
+#include "env.h"
 
 #define DISK_ALIGN_BYTES 4
 

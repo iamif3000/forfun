@@ -261,6 +261,43 @@ end:
   return error;
 }
 
+int appendBytes(String *str, byte *b_p, count_t length)
+{
+  int error = NO_ERROR;
+  byte *buf_p = NULL;
+  count_t new_size = 0;
+
+  assert(str != NULL && b_p != NULL && length > 0);
+
+  if (str->length + length >= str->size) {
+    new_size = str->size + length * 1.5;
+    buf_p = (byte*)string_alloc(sizeof(byte) * new_size);
+    if (buf_p == NULL) {
+      error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      SET_ERROR(error);
+
+      goto end;
+    }
+
+    memcpy(buf_p, str->bytes, str->length);
+    buf_p[str->length] = '\0';
+
+    string_free(str->bytes);
+
+    str->bytes = buf_p;
+    str->size = new_size;
+  }
+
+  memcpy(str->bytes + str->length, b_p, length);
+  str->length += length;
+
+  str->bytes[str->length] = '\0';
+
+end:
+
+  return error;
+}
+
 void resetString(String *str)
 {
   assert(str != NULL && str->bytes != NULL && str->size != 0 && str->ref_count == 1);

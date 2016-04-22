@@ -10,6 +10,12 @@
 #ifndef FUNCTION_H_
 #define FUNCTION_H_
 
+#define freeAndSetNull(p) \
+  do { \
+    free(p); \
+    p = NULL; \
+  } while(0)
+
 #define SWAP(a, b) \
   do { \
     a = a^b; \
