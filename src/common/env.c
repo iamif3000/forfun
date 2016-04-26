@@ -5,6 +5,8 @@
  *      Author: duping
  */
 
+#include <string.h>
+
 #include "common.h"
 #include "env.h"
 
@@ -16,7 +18,28 @@ int initEnv(char *_workDir, char *_confDir, char *_dataDir)
 {
   int error = NO_ERROR;
 
-  // TODO
+  assert(_workDir != NULL && _confDir != NULL && _dataDir != NULL);
+
+  // TODO : more
+  workDir = strdup(_workDir);
+  if (workDir == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  confDir = strdup(_confDir);
+  if (workDir == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  dataDir = strdup(_dataDir);
+  if (workDir == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+end:
 
   return error;
 }
@@ -36,17 +59,17 @@ void destroyEnv()
   }
 }
 
-char *getWorkingDir()
+const char *getWorkingDir()
 {
   return workDir;
 }
 
-char *getConfDir()
+const char *getConfDir()
 {
   return confDir;
 }
 
-char *getDataDir()
+const char *getDataDir()
 {
   return dataDir;
 }

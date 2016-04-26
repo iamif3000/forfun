@@ -1,19 +1,17 @@
-objects = base_hash_test.o base_hash.o atomic.o align.o error_manager.o thread.o
+objects = base_coding_test.o base_coding.o atomic.o error_manager.o thread.o
 LIBS = -lpthread
 STD = c99
 CC = cc -std=$(STD) -g
 
-base_hash_test : $(objects)
+base_coding_test : $(objects)
 	$(CC) -o $@ $(LIBS) $(objects)
 
-base_hash_test.o : base_hash_test.c ../common/test_common.h
-	$(CC) -c base_hash_test.c
-base_hash.o : ../../base/base_hash.c
-	$(CC) -c ../../base/base_hash.c
+base_string_test.o : base_string_test.c ../common/test_common.h
+	$(CC) -c base_string_test.c
+base_coding.o : ../../base/base_coding.c
+	$(CC) -c ../../base/base_coding.c
 atomic.o : ../../port/atomic.c ../../port/atomic.h
 	$(CC) -c ../../port/atomic.c
-align.o : ../../common/align.c ../../common/align.h
-	$(CC) -c ../../common/align.c
 error_manager.o : ../../common/error_manager.c ../../common/error_manager.h
 	$(CC) -c ../../common/error_manager.c
 thread.o : ../../port/thread.c ../../port/thread.h
@@ -21,4 +19,4 @@ thread.o : ../../port/thread.c ../../port/thread.h
 	
 .PHONY : clean
 clean : 
-	rm -rf base_hash_test $(objects)
+	rm -rf base_string_test $(objects)

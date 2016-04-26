@@ -21,4 +21,4 @@ thread.o : ../../port/thread.c ../../port/thread.h
 	
 .PHONY : clean
 clean : 
-	-rm base_string_test $(objects)
+	rm -rf base_string_test $(objects)

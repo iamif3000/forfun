@@ -11,8 +11,8 @@
 int initEnv();
 void destroyEnv();
 
-char *getWorkingDir();
-char *getConfDir();
-char *getDataDir();
+const char *getWorkingDir();
+const char *getConfDir();
+const char *getDataDir();
 
 #endif /* ENV_H_ */
