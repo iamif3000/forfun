@@ -1,3 +1,4 @@
+#include "../common/id.h"
 #include "page.h"
 
 #ifndef SLOT_PAGE_H_
@@ -11,21 +12,21 @@ typedef struct slot_page SlotPage;
 typedef struct slot_page_record SlotPageRecord;
 
 enum slot_type {
-  HOME,
-  PREALLOC,
-  REDIRECT,
-  REHOME,       // REDIRECT ---> REHOME, the new position of a redirected record
-  OVERFLOW,
-  DELETED,
+  ALIVE,
+  ALIVE_OVERFLOW,
+  DEAD,
+  DEAD_OVERFLOW,
+  VANISHED,
   SLOT_TYPE_COUNT
 };
 
 /*
- * -----------------------------------------
- * type    | size    | start   | end
- * -----------------------------------------
- * 8 bytes | 8 bytes | 8 bytes | 8 bytes
- * -----------------------------------------
+ * May change ...
+ * ----------------------------------------------------------------
+ * type    | length  | start   | end        | op_id     | next_pos
+ * ----------------------------------------------------------------
+ * 8 bytes | 8 bytes | 8 bytes | 8 bytes    | 8 bytes   | 24 bytes
+ * ----------------------------------------------------------------
  *
  */
 struct slot {
@@ -34,6 +35,8 @@ struct slot {
   count_t length;     // the real data length
   offset_t start;
   offset_t end;
+  number_t op_id;
+  SlotID next_pos;
 };
 
 struct slot_page_header {
@@ -55,8 +58,9 @@ int getSlotPageRecord(const SlotPage *slot_page_p, const number_t slot_number, S
 int setSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, const byte *record_p, const count_t record_len);
 int updateSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, const byte *record_p, const count_t record_len);
 int appendSlotPageRecord(SlotPage *slot_page_p, const byte *record_p, const count_t record_len);
-int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot);
-int preallocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot);
+int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot, SlotType type);
+int allocOverflowSlot(SlotPage *slot_page_p, Slot *slot);
 int setSlotType(SlotPage *slot_page_p, const number_t slot_number, const SlotType type);
+int deleteSlot(SlotPage *slot_page_p, const number_t slot_number);
 
 #endif

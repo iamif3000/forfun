@@ -10,12 +10,18 @@
 #define ID_H_
 
 typedef id64_t VolumeID;
+typedef struct slot_id SlotID;
 typedef struct page_id PageID;
 typedef struct page_id FileID;
 
 struct page_id {
   VolumeID vol_id;
   id64_t pg_id;
+};
+
+struct slot_id {
+  PageID page_id;
+  number_t slot_number;
 };
 
 #endif /* ID_H_ */

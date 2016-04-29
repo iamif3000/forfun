@@ -17,6 +17,12 @@ static count_t getSlotPageLeftSize(const SlotPage *slot_page_p);
 //static
 int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
 {
+#define READ_64BITS_FROM_STREAM(type, ref) \
+  do { \
+    (ref) = (type)ntohll(*(type*)pos); \
+    pos += sizeof(type); \
+  } while(0)
+
   byte *pos = NULL;
   int error = NO_ERROR;
 
@@ -28,31 +34,37 @@ int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
     // read slot info
     slot->no = slot_number;
 
-    slot->type = ntohll(*(uint64_t*)pos);
-    pos += sizeof(uint64_t);
-
-    slot->length = ntohll(*(count_t*)pos);
-    pos += sizeof(count_t);
-
-    slot->start = ntohll(*(offset_t*)pos);
-    pos += sizeof(offset_t);
-
-    slot->end = ntohll(*(offset_t*)pos);
+    READ_64BITS_FROM_STREAM(uint64_t, slot->type);
+    READ_64BITS_FROM_STREAM(count_t, slot->length);
+    READ_64BITS_FROM_STREAM(offset_t, slot->start);
+    READ_64BITS_FROM_STREAM(offset_t, slot->end);
+    READ_64BITS_FROM_STREAM(number_t, slot->op_id);
+    READ_64BITS_FROM_STREAM(VolumeID, slot->next_pos.page_id.vol_id);
+    READ_64BITS_FROM_STREAM(id64_t, slot->next_pos.page_id.pg_id);
+    READ_64BITS_FROM_STREAM(number_t, slot->next_pos.slot_number);
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
     SET_ERROR(error);
   }
 
   return error;
+
+#undef READ_64BITS_FROM_STREAM
 }
 
 //static
 int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
 {
+#define SAVE_UINT64_TO_STREAM(ui64) \
+  do { \
+    tmp = htonll(ui64); \
+    memcpy(pos, &tmp, sizeof(tmp)); \
+    pos += sizeof(tmp); \
+  } while(0)
+
   byte *pos = NULL;
-  uint64_t type;
-  count_t length;
-  offset_t start, end;
+  uint64_t tmp;
+
   int error = NO_ERROR;
 
   assert(slot_page_p != NULL && slot_page_p->page_p != NULL && slot != NULL);
@@ -61,27 +73,22 @@ int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
     pos = slot_page_p->page_p->bytes + PAGE_SIZE - (slot_number + 1) * SLOT_SIZE;
 
     // set slot info
-    type = htonll(slot->type);
-    length = htonll(slot->length);
-    start = htonll(slot->start);
-    end = htonll(slot->end);
-
-    memcpy(pos, &type, sizeof(type));
-    pos += sizeof(type);
-
-    memcpy(pos, &length, sizeof(length));
-    pos += sizeof(length);
-
-    memcpy(pos, &start, sizeof(start));
-    pos += sizeof(start);
-
-    memcpy(pos, &end, sizeof(end));
+    SAVE_UINT64_TO_STREAM(slot->type);
+    SAVE_UINT64_TO_STREAM(slot->length);
+    SAVE_UINT64_TO_STREAM(slot->start);
+    SAVE_UINT64_TO_STREAM(slot->end);
+    SAVE_UINT64_TO_STREAM(slot->op_id);
+    SAVE_UINT64_TO_STREAM(slot->next_pos.page_id.vol_id);
+    SAVE_UINT64_TO_STREAM(slot->next_pos.page_id.pg_id);
+    SAVE_UINT64_TO_STREAM(slot->next_pos.slot_number);
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
     SET_ERROR(error);
   }
 
   return error;
+
+#undef SAVE_UINT64_TO_STREAM
 }
 
 //static
@@ -231,7 +238,7 @@ int updateSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, cons
       }
     }
   } else {
-    // TODO : consider OVERFLOW, REDIRECT
+    // TODO : consider OVERFLOW,
 
     error = ER_SLOT_PAGE_NOT_ENOUGH_SPACE;
     SET_ERROR(error);
@@ -275,7 +282,7 @@ int appendSlotPageRecord(SlotPage *slot_page_p, const byte *record_p, const coun
 
     // write slot
     slot.no = slot_count;
-    slot.type = HOME;
+    slot.type = ALIVE;
     slot.length = record_len;
     slot.start = record_start;
     slot.end = record_start + aligned_record_len - 1;
@@ -297,7 +304,7 @@ end:
   return error;
 }
 
-int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot)
+int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot, SlotType type)
 {
   int error = NO_ERROR;
   count_t left_size = 0;
@@ -315,7 +322,7 @@ int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot)
     (void)getSlotPageHeader(slot_page_p, &header);
     (void)getSlot(slot_page_p, header.slot_count - 1, &last_slot);
     slot->no = header.slot_count;
-    slot->type = HOME;
+    slot->type = type;
     slot->length = 0;
     slot->start = last_slot.end + 1;
     slot->end = last_slot.end + size;
@@ -334,16 +341,16 @@ end:
   return error;
 }
 
-int preallocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot)
+int allocOverflowSlot(SlotPage *slot_page_p, Slot *slot)
 {
   int error = NO_ERROR;
+  count_t size = 0;
 
   assert(slot_page_p != NULL && slot != NULL);
 
-  error = allocSlot(slot_page_p, size, slot);
-  if (error == NO_ERROR) {
-    slot->type = PREALLOC;
-  }
+  // TODO : calculate the overflow size
+
+  error = allocSlot(slot_page_p, size, slot, ALIVE_OVERFLOW);
 
   return error;
 }
@@ -362,6 +369,39 @@ int setSlotType(SlotPage *slot_page_p, const number_t slot_number, const SlotTyp
 
   if (slot.type != type) {
     slot.type = type;
+    error = setSlot(slot_page_p, slot_number, &slot);
+    if (error != NO_ERROR) {
+      goto end;
+    }
+  }
+
+end:
+
+  return error;
+}
+
+int deleteSlot(SlotPage *slot_page_p, const number_t slot_number)
+{
+  int error = NO_ERROR;
+  Slot slot;
+  bool set_slot = false;
+
+  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && slot_number > 0);
+
+  error = getSlot(slot_page_p, slot_number, &slot);
+  if (error != NO_ERROR) {
+    goto end;
+  }
+
+  if (slot.type == ALIVE) {
+    slot.type = DEAD;
+    set_slot = true;
+  } else if (slot.type == ALIVE_OVERFLOW) {
+    slot.type = DEAD_OVERFLOW;
+    set_slot = true;
+  }
+
+  if (set_slot) {
     error = setSlot(slot_page_p, slot_number, &slot);
     if (error != NO_ERROR) {
       goto end;
