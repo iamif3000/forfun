@@ -17,10 +17,10 @@ static count_t getSlotPageLeftSize(const SlotPage *slot_page_p);
 //static
 int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
 {
-#define READ_64BITS_FROM_STREAM(type, ref) \
+#define READ_64BITS_FROM_STREAM(stream, type, ref) \
   do { \
-    (ref) = (type)ntohll(*(type*)pos); \
-    pos += sizeof(type); \
+    (ref) = (type)ntohll(*(type*)(stream)); \
+    (stream) += sizeof(type); \
   } while(0)
 
   byte *pos = NULL;
@@ -34,14 +34,14 @@ int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
     // read slot info
     slot->no = slot_number;
 
-    READ_64BITS_FROM_STREAM(uint64_t, slot->type);
-    READ_64BITS_FROM_STREAM(count_t, slot->length);
-    READ_64BITS_FROM_STREAM(offset_t, slot->start);
-    READ_64BITS_FROM_STREAM(offset_t, slot->end);
-    READ_64BITS_FROM_STREAM(number_t, slot->op_id);
-    READ_64BITS_FROM_STREAM(VolumeID, slot->next_pos.page_id.vol_id);
-    READ_64BITS_FROM_STREAM(id64_t, slot->next_pos.page_id.pg_id);
-    READ_64BITS_FROM_STREAM(number_t, slot->next_pos.slot_number);
+    READ_64BITS_FROM_STREAM(pos, uint64_t, slot->type);
+    READ_64BITS_FROM_STREAM(pos, count_t, slot->length);
+    READ_64BITS_FROM_STREAM(pos, offset_t, slot->start);
+    READ_64BITS_FROM_STREAM(pos, offset_t, slot->end);
+    READ_64BITS_FROM_STREAM(pos, number_t, slot->op_id);
+    READ_64BITS_FROM_STREAM(pos, VolumeID, slot->next_pos.page_id.vol_id);
+    READ_64BITS_FROM_STREAM(pos, id64_t, slot->next_pos.page_id.pg_id);
+    READ_64BITS_FROM_STREAM(pos, number_t, slot->next_pos.slot_number);
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
     SET_ERROR(error);
@@ -55,11 +55,11 @@ int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
 //static
 int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
 {
-#define SAVE_UINT64_TO_STREAM(ui64) \
+#define SAVE_UINT64_TO_STREAM(stream, ui64) \
   do { \
     tmp = htonll(ui64); \
-    memcpy(pos, &tmp, sizeof(tmp)); \
-    pos += sizeof(tmp); \
+    memcpy(stream, &tmp, sizeof(tmp)); \
+    (stream) += sizeof(tmp); \
   } while(0)
 
   byte *pos = NULL;
@@ -73,14 +73,14 @@ int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
     pos = slot_page_p->page_p->bytes + PAGE_SIZE - (slot_number + 1) * SLOT_SIZE;
 
     // set slot info
-    SAVE_UINT64_TO_STREAM(slot->type);
-    SAVE_UINT64_TO_STREAM(slot->length);
-    SAVE_UINT64_TO_STREAM(slot->start);
-    SAVE_UINT64_TO_STREAM(slot->end);
-    SAVE_UINT64_TO_STREAM(slot->op_id);
-    SAVE_UINT64_TO_STREAM(slot->next_pos.page_id.vol_id);
-    SAVE_UINT64_TO_STREAM(slot->next_pos.page_id.pg_id);
-    SAVE_UINT64_TO_STREAM(slot->next_pos.slot_number);
+    SAVE_UINT64_TO_STREAM(pos, slot->type);
+    SAVE_UINT64_TO_STREAM(pos, slot->length);
+    SAVE_UINT64_TO_STREAM(pos, slot->start);
+    SAVE_UINT64_TO_STREAM(pos, slot->end);
+    SAVE_UINT64_TO_STREAM(pos, slot->op_id);
+    SAVE_UINT64_TO_STREAM(pos, slot->next_pos.page_id.vol_id);
+    SAVE_UINT64_TO_STREAM(pos, slot->next_pos.page_id.pg_id);
+    SAVE_UINT64_TO_STREAM(pos, slot->next_pos.slot_number);
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
     SET_ERROR(error);
