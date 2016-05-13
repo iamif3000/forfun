@@ -27,7 +27,7 @@
   } while(0)
 
 typedef enum hash_find_lock_type HashFindLockType;
-typedef union hash_value HashValue;
+typedef Value HashValue;
 typedef struct hash_value_pair HashValuePair;
 typedef struct hash_collision_list HashCollisionList;
 typedef struct hash_entry HashEntry;
@@ -43,20 +43,6 @@ typedef int (*CompareFunc)(const HashValue, const HashValue);
 enum hash_find_lock_type {
   HASH_FIND_READ,
   HASH_FIND_WRITE
-};
-
-union hash_value {
-  char c;
-  byte uc;
-  short s;
-  uint16_t ui16;
-  int i;
-  uint32_t ui;
-  int64_t i64;
-  uint64_t ui64;
-  float f;
-  double d;
-  void *ptr;
 };
 
 struct hash_value_pair {
