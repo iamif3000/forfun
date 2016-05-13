@@ -1,19 +1,23 @@
-objects = base_coding_test.o base_coding.o atomic.o error_manager.o thread.o
+objects = rbtree_test.o rbtree.o base_dequeue.o queue.o align.o atomic.o error_manager.o thread.o
 LIBS = -lpthread
 STD = c99
 CC = cc -std=$(STD) -g
 
-base_coding_test : $(objects)
+rbtree_test : $(objects)
 	$(CC) -o $@ $(LIBS) $(objects)
 
 base_string_test.o : base_string_test.c ../common/test_common.h
 	$(CC) -c base_string_test.c
-base_coding.o : ../../base/base_coding.c
-	$(CC) -c ../../base/base_coding.c
+rbtree.o : ../../base/rbtree.c
+	$(CC) -c ../../base/rbtree.c
+base_dequeue.o : ../../base/base_dequeue.c
+	$(CC) -c ../../base/base_dequeue.c
+queue.o : ../../base/queue.c
+	$(CC) -c ../../base/queue.c
+align.o : ../../common/align.c ../../common/align.h
+	$(CC) -c ../../common/align.c
 atomic.o : ../../port/atomic.c ../../port/atomic.h
 	$(CC) -c ../../port/atomic.c
-error_manager.o : ../../common/error_manager.c ../../common/error_manager.h
-	$(CC) -c ../../common/error_manager.c
 thread.o : ../../port/thread.c ../../port/thread.h
 	$(CC) -c ../../port/thread.c
 	

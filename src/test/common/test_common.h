@@ -16,7 +16,7 @@
 
 typedef void *(*THREAD_FUNC)(void *);
 
-inline void create_threads_and_run(int threads_count, THREAD_FUNC func, void **args)
+inline static void create_threads_and_run(int threads_count, THREAD_FUNC func, void **args)
 {
   pthread_t thread_arr[threads_count];
   int error = 0;

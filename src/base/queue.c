@@ -5,6 +5,7 @@
  *      Author: duping
  */
 
+#include "../common/common.h"
 #include "queue.h"
 
 #define MIN_QUEUE_UNIT_CAPACITY 20

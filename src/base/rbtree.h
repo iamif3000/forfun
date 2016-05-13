@@ -21,7 +21,7 @@
     (p) = NULL; \
   } while(0)
 
-typedef rb_color RBColor;
+typedef struct rb_color RBColor;
 typedef Value RBValue;
 typedef struct rb_node RBNode;
 typedef struct rb_tree RBTree;
@@ -44,7 +44,7 @@ struct rb_tree {
 int initRBTreeEnv();
 void destroyRBTreeEnv();
 
-RBTree *createRBTree(RB_CMP_FUNC *cmp_func);
+RBTree *createRBTree(RB_CMP_FUNC cmp_func);
 void destroyRBTree(RBTree *tree_p);
 
 bool searchRBTree(RBTree *tree_p, const RBValue key, RBValue *value_p);

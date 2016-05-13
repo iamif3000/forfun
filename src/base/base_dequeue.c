@@ -5,6 +5,8 @@
  *      Author: duping
  */
 
+#include <stdlib.h>
+
 #include "../common/common.h"
 #include "../port/atomic.h"
 
@@ -147,7 +149,7 @@ void destroyDeQueue(DeQueue *dq_p)
     }
 
     while (dq_p->free_list_p != NULL) {
-      next_p = dq_p->free_list_p;
+      next_p = dq_p->free_list_p->next_p;
 
       free(dq_p->free_list_p);
 

@@ -8,6 +8,9 @@
  *            http://www.teachsolaisgames.com/articles/balanced_left_leaning.html
  */
 
+#include <stdlib.h>
+#include <string.h>
+
 #include "../common/common.h"
 #include "../common/block_alloc_helper.h"
 #include "../port/atomic.h"
@@ -36,8 +39,8 @@ static void freeRBNode(RBNode *node_p);
 static void initRBNode(RBNode *node_p);
 static void freeRBTreeNodes(RBNode *root_p);
 
-static RBNode *rotateLeft(RBTree *tree_p, RBNode *node_p);
-static RBNode *rotateRight(RBTree *tree_p, RBNode *node_p);
+static RBNode *rotateLeft(RBNode *node_p);
+static RBNode *rotateRight(RBNode *node_p);
 static void colorFlip(RBNode *node_p);
 static RBNode *fixUp(RBNode *node_p);
 static RBNode *insertRBNode(RBNode *node_p, RBNode *new_node_p, RB_CMP_FUNC cmp_func_p);
@@ -184,11 +187,11 @@ void freeRBTreeNodes(RBNode *root_p)
 /*
  * static
  */
-RBNode *rotateLeft(RBTree *tree_p, RBNode *node_p)
+RBNode *rotateLeft(RBNode *node_p)
 {
   RBNode *right_p = NULL;
 
-  assert(tree_p != NULL && node_p != NULL && node_p->right_p != NULL);
+  assert(node_p != NULL && node_p->right_p != NULL);
 
   right_p = node_p->right_p;
   node_p->right_p = right_p->left_p;
@@ -202,11 +205,11 @@ RBNode *rotateLeft(RBTree *tree_p, RBNode *node_p)
 /*
  * static
  */
-RBNode *rotateRight(RBTree *tree_p, RBNode *node_p)
+RBNode *rotateRight(RBNode *node_p)
 {
   RBNode *left_p = NULL;
 
-  assert(tree_p != NULL && node_p != NULL && node_p->left_p != NULL);
+  assert(node_p != NULL && node_p->left_p != NULL);
 
   left_p = node_p->left_p;
   node_p->left_p = left_p->right_p;
@@ -281,7 +284,7 @@ void destroyRBTreeEnv()
   rb_node_block_p = NULL;
 }
 
-RBTree *createRBTree(RB_CMP_FUNC *cmp_func)
+RBTree *createRBTree(RB_CMP_FUNC cmp_func)
 {
   RBTree *tree_p = NULL;
   RBNode *root_p = NULL;
@@ -497,7 +500,7 @@ RBNode *deleteRBNode(RBNode *node_p, const RBValue key, RB_CMP_FUNC cmp_func_p)
         node_p = moveRedLeft(node_p);
       }
 
-      node_p->left_p = deleteRBNode(node_p->left_p, key);
+      node_p->left_p = deleteRBNode(node_p->left_p, key, cmp_func_p);
     } else {
       if (IS_RED(node_p->left_p)) {
         node_p = rotateRight(node_p);
