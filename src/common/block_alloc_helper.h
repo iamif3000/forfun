@@ -13,7 +13,7 @@
  * the params start with capital letter are types or members
  */
 
-#define BAH_ALLOC_LINK_BLOCK(Block_next_p, block_list_p, block_p, Items, items_count, Item_next_p, item_p) \
+#define BAH_LINK_BLOCK(Block_next_p, block_list_p, block_p, Items, items_count, Item_next_p, item_p) \
   do { \
     (block_p)->Block_next_p = (block_list_p); \
     (block_list_p) = (block_p); \
@@ -23,10 +23,10 @@
       (item_p)[i].Item_next_p = &(item_p)[i + 1]; \
     } \
     \
-    (item_p)[RBNODE_PER_BLOCK - 1].Item_next_p = NULL; \
+    (item_p)[items_count - 1].Item_next_p = NULL; \
   } while(0)
 
-#define BAH_ALLOC_LINK_FREE_LIST(Item_next_p, free_item_list_p, first_item_p, last_item_p, next_item_p) \
+#define BAH_LINK_FREE_LIST(Item_next_p, free_item_list_p, first_item_p, last_item_p, next_item_p) \
   while (true) { \
     (next_item_p) = (free_item_list_p); \
     if (MARKED(next_item_p)) { \
@@ -74,15 +74,13 @@
 
 #define BAH_LOCK_AND_ALLOC_BLOCK(free_item_list_lock, free_item_list_p, alloc_func_p, error) \
   do { \
+    lock_int(&(free_item_list_lock)); \
+    \
     if ((free_item_list_p) == NULL) { \
-      lock_int(&(free_item_list_lock)); \
-      \
-      if ((free_item_list_p) == NULL) { \
-        (error) = (alloc_func_p)(); \
-      } \
-      \
-      unlock_int(&(free_item_list_lock)); \
+      (error) = (alloc_func_p)(); \
     } \
+    \
+    unlock_int(&(free_item_list_lock)); \
   } while(0)
 
 #endif /* BLOCK_ALLOCATOR_H_ */

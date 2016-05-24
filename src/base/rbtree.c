@@ -65,8 +65,8 @@ int allocRBNodeBlock()
     goto end;
   }
 
-  BAH_ALLOC_LINK_BLOCK(next_p, rb_node_block_p, block_p, nodes, RBNODE_PER_BLOCK, left_p, node_p);
-  BAH_ALLOC_LINK_FREE_LIST(left_p, free_rb_node_list_p, &node_p[0], &node_p[RBNODE_PER_BLOCK - 1], next_p);
+  BAH_LINK_BLOCK(next_p, rb_node_block_p, block_p, nodes, RBNODE_PER_BLOCK, left_p, node_p);
+  BAH_LINK_FREE_LIST(left_p, free_rb_node_list_p, &node_p[0], &node_p[RBNODE_PER_BLOCK - 1], next_p);
 
 end:
 

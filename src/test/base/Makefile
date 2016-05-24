@@ -20,6 +20,8 @@ atomic.o : ../../port/atomic.c ../../port/atomic.h
 	$(CC) -c ../../port/atomic.c
 thread.o : ../../port/thread.c ../../port/thread.h
 	$(CC) -c ../../port/thread.c
+error_manager.o : ../../common/error_manager.c ../../common/error_manager.h
+	$(CC) -c ../../common/error_manager.c
 	
 .PHONY : clean
 clean : 

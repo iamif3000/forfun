@@ -10,6 +10,7 @@
 
 #include "../common/common.h"
 #include "../common/error_manager.h"
+#include "../common/block_alloc_helper.h"
 
 #include "../port/atomic.h"
 #include "../port/thread.h"
@@ -43,31 +44,10 @@ ErrorList *allocErrorList()
   ErrorList *list_p = NULL;
 
   while (true) {
-    while (true) {
-      list_p = free_error_list_p;
-      if (list_p == NULL) {
-        break;
-      }
-
-      if (MARKED(list_p) || !compare_and_swap_bool(&free_error_list_p, list_p, MARK(list_p))) {
-        continue;
-      }
-
-      if (compare_and_swap_bool(&free_error_list_p, MARK(list_p), list_p->next_p)) {
-        break;
-      }
-
-      assert(false);
-    }
+    BAH_ALLOC_FROM_FREE_LIST(next_p, free_error_list_p, list_p);
 
     if (list_p == NULL) {
-      lock_int(&error_list_clock_lock);
-
-      if (free_error_list_p == NULL) {
-        error = allocErrorListBlock();
-      }
-
-      unlock_int(&error_list_clock_lock);
+      BAH_LOCK_AND_ALLOC_BLOCK(error_list_clock_lock, free_error_list_p, allocErrorListBlock, error);
 
       if (error != NO_ERROR) {
         break;
@@ -103,17 +83,7 @@ void freeErrorList(ErrorList *list_p)
 
   assert(list_p != NULL);
 
-  while (true) {
-    next_p = free_error_list_p;
-    if (MARKED(next_p)) {
-      continue;
-    }
-
-    list_p->next_p = next_p;
-    if (compare_and_swap_bool(&free_error_list_p, next_p, list_p)) {
-      break;
-    }
-  }
+  BAH_FREE_TO_FREE_LIST(next_p, free_error_list_p, list_p, next_p);
 }
 
 /*
@@ -131,28 +101,8 @@ int allocErrorListBlock()
     goto end;
   }
 
-  list_p = &block_p->list_array[0];
-  for (int i = 1; i < ERROR_LIST_PER_BLOCK; ++i) {
-    list_p[i-1].next_p = &list_p[i];
-  }
-
-  list_p[ERROR_LIST_PER_BLOCK - 1].next_p = NULL;
-
-  block_p->next_p = error_list_clock_p;
-  error_list_clock_p = block_p;
-
-  // link free list
-  while (true) {
-    list_p = free_error_list_p;
-    if (MARKED(list_p)) {
-      continue;
-    }
-
-    block_p->list_array[ERROR_LIST_PER_BLOCK - 1].next_p = list_p;
-    if (compare_and_swap_bool(&free_error_list_p, list_p, &block_p->list_array[0])) {
-      break;
-    }
-  }
+  BAH_LINK_BLOCK(next_p, error_list_clock_p, block_p, list_array, ERROR_LIST_PER_BLOCK, next_p, list_p);
+  BAH_LINK_FREE_LIST(next_p, free_error_list_p, &block_p->list_array[0], &block_p->list_array[ERROR_LIST_PER_BLOCK - 1], list_p);
 
 end:
 

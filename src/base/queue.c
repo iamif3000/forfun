@@ -16,7 +16,7 @@ Queue *createQueue(int unit_capacity)
     unit_capacity = MIN_QUEUE_UNIT_CAPACITY;
   }
 
-  return createDeQueue(MIN_QUEUE_UNIT_CAPACITY);
+  return createDeQueue(unit_capacity);
 }
 
 void destroyQueue(Queue *q_p)

@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "../common/common.h"
+#include "../common/block_alloc_helper.h"
 #include "../port/atomic.h"
 #include "base_hash.h"
 
@@ -221,23 +222,7 @@ HashCollisionList *allocCollisionListNode(HashTable *hash_tab_p)
   assert(hash_tab_p != NULL);
 
   while (true) {
-    while (true) {
-      node_p = hash_tab_p->free_list;
-      if (node_p == NULL) {
-        break;
-      }
-
-      if (MARKED(node_p) || !compare_and_swap_bool(&hash_tab_p->free_list, node_p, MARK(node_p))) {
-        continue;
-      }
-
-      if (compare_and_swap_bool(&hash_tab_p->free_list, MARK(node_p), node_p->next_p)) {
-        break;
-      }
-
-      // shouldn't be here
-      assert(false);
-    }
+    BAH_ALLOC_FROM_FREE_LIST(next_p, hash_tab_p->free_list, node_p)
 
     if (node_p == NULL) {
       area_p = NULL;
@@ -247,29 +232,8 @@ HashCollisionList *allocCollisionListNode(HashTable *hash_tab_p)
       if (hash_tab_p->free_list == NULL) {
         area_p = (HashCollisionListArea*)malloc(sizeof(HashCollisionListArea) + sizeof(HashCollisionList) * FREE_COLLISION_LIST_ALLOC);
         if (area_p != NULL) {
-          // init area
-          for (count_t i = 1; i < FREE_COLLISION_LIST_ALLOC; ++i) {
-            area_p->list_items[i - 1].next_p = &area_p->list_items[i];
-          }
-          area_p->list_items[FREE_COLLISION_LIST_ALLOC - 1].next_p = NULL;
-
-          // link to hash_tab_p->free_list_area
-          area_p->next_p = hash_tab_p->free_list_area;
-          hash_tab_p->free_list_area = area_p;
-
-          // link to hash_tab_p->free_list
-          while (true) {
-            free_list_p = hash_tab_p->free_list;
-            if (MARKED(free_list_p)) {
-              continue;
-            }
-
-            area_p->list_items[FREE_COLLISION_LIST_ALLOC - 1].next_p = free_list_p;
-
-            if (compare_and_swap_bool(&hash_tab_p->free_list, free_list_p, &area_p->list_items[0])) {
-              break;
-            }
-          }
+          BAH_LINK_BLOCK(next_p, hash_tab_p->free_list_area, area_p, list_items, FREE_COLLISION_LIST_ALLOC, next_p, free_list_p);
+          BAH_LINK_FREE_LIST(next_p, hash_tab_p->free_list, &area_p->list_items[0], &area_p->list_items[FREE_COLLISION_LIST_ALLOC - 1], free_list_p);
         }
       } else {
         // somebody else allocated the area
@@ -301,18 +265,7 @@ void freeCollisionListNode(HashTable *hash_tab_p, HashCollisionList *node_p)
 
   assert(hash_tab_p != NULL && node_p != NULL);
 
-  while (true) {
-    free_list_p = hash_tab_p->free_list;
-    if (MARKED(free_list_p)) {
-      continue;
-    }
-
-    node_p->next_p = free_list_p;
-
-    if (compare_and_swap_bool(&hash_tab_p->free_list, free_list_p, node_p)) {
-      break;
-    }
-  }
+  BAH_FREE_TO_FREE_LIST(next_p, hash_tab_p->free_list, node_p, free_list_p);
 }
 
 /*
@@ -877,19 +830,7 @@ int removeFromHashTable(HashTable *hash_tab_p, const HashValue key)
 
         unlock_int(&base[base_idx]->update_lock);
 
-        // put the node in free_list
-        while (true) {
-          free_list_p = hash_tab_p->free_list;
-          if (MARKED(free_list_p)) {
-            continue;
-          }
-
-          p->next_p = free_list_p;
-
-          if (compare_and_swap_bool(&hash_tab_p->free_list, free_list_p, p)) {
-            break;
-          }
-        }
+        BAH_FREE_TO_FREE_LIST(next_p, hash_tab_p->free_list, p, free_list_p);
 
         found = true;
       }

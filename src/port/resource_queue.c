@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "../common/common.h"
+#include "../common/block_alloc_helper.h"
 
 #include "../port/atomic.h"
 
@@ -210,7 +211,7 @@ int initResourceQueue(ResourceQueue *rq_p)
  */
 int expandHolderList()
 {
-#define ALLOC_COUNT 512
+#define ALLOC_COUNT 128
 
   int error = NO_ERROR;
   RQHolderListBlock *block_p = NULL;
@@ -238,18 +239,7 @@ int expandHolderList()
   block_p->next_p = holder_list_block_p;
   holder_list_block_p = block_p;
 
-  while (true) {
-    free_list_p = free_holder_list_p;
-    if (MARKED(free_list_p)) {
-      continue;
-    }
-
-    list_p[ALLOC_COUNT - 1].next_p = free_list_p;
-
-    if (compare_and_swap_bool(&free_holder_list_p, free_list_p, &list_p[0])) {
-      break;
-    }
-  }
+  BAH_LINK_FREE_LIST(next_p, free_holder_list_p, &list_p[0], &list_p[ALLOC_COUNT - 1], free_list_p);
 
 end:
 
@@ -287,31 +277,10 @@ RQHolderList *allocHolderList()
   RQHolderList *list_p = NULL;
 
   while (true) {
-    while (true) {
-      list_p = free_holder_list_p;
-      if (list_p == NULL) {
-        break;
-      }
-
-      if (MARKED(list_p) || !compare_and_swap_bool(&free_holder_list_p, list_p, MARK(list_p))) {
-        continue;
-      }
-
-      if (compare_and_swap_bool(&free_holder_list_p, MARK(list_p), list_p->next_p)) {
-        break;
-      }
-
-      assert(false);
-    }
+    BAH_ALLOC_FROM_FREE_LIST(next_p, free_holder_list_p, list_p);
 
     if (list_p == NULL) {
-      lock_int(&holder_list_block_lock);
-
-      if (free_holder_list_p == NULL) {
-        error = expandHolderList();
-      }
-
-      unlock_int(&holder_list_block_lock);
+      BAH_LOCK_AND_ALLOC_BLOCK(holder_list_block_lock, free_holder_list_p, expandHolderList, error);
     } else {
       initHolderList(list_p);
     }
@@ -334,18 +303,7 @@ void freeHolderList(RQHolderList *list_p)
   if (list_p != NULL) {
     list_p->subject_p.thread = NULL;
 
-    while (true) {
-      free_list_p = free_holder_list_p;
-      if (MARKED(free_list_p)) {
-        continue;
-      }
-
-      list_p->next_p = free_list_p;
-
-      if (compare_and_swap_bool(&free_holder_list_p, free_list_p, list_p)) {
-        break;
-      }
-    }
+    BAH_FREE_TO_FREE_LIST(next_p, free_holder_list_p, list_p, free_list_p);
   }
 }
 
