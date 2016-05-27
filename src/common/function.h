@@ -18,9 +18,9 @@
 
 #define SWAP(a, b) \
   do { \
-    a = a^b; \
-    b = a^b; \
-    a = a^b; \
+    (a) = (a)^(b); \
+    (b) = (a)^(b); \
+    (a) = (a)^(b); \
   } while(0)
 
 #define OFFSET_OF(type, member) ((offset_t)(&((type*)0)->member))

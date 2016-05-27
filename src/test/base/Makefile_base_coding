@@ -19,4 +19,4 @@ thread.o : ../../port/thread.c ../../port/thread.h
 	
 .PHONY : clean
 clean : 
-	rm -rf base_string_test $(objects)
+	rm -rf base_coding_test $(objects)
