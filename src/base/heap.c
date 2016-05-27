@@ -14,7 +14,7 @@
 #define LEAST_HEAP_SIZE 128
 #define EXPAND_RATIO 1.1
 
-static void ajustHeap(Heap *heap_p);
+static void ajustHeap(Heap *heap_p, int64_t length);
 static void ajustHeapAppend(Heap *heap_p);
 static void initHeap(Heap *heap_p);
 static int expandHeap(Heap *heap_p, int64_t size);
@@ -22,15 +22,15 @@ static int expandHeap(Heap *heap_p, int64_t size);
 /*
  * static
  */
-void ajustHeap(Heap *heap_p)
+void ajustHeap(Heap *heap_p, int64_t length)
 {
   int64_t cur_idx = 0, child_idx = 0;
   int64_t left_child_idx = 0, right_child_idx = 0;
   HeapValue value;
 
-  assert(heap_p != NULL);
+  assert(heap_p != NULL && length >= 0);
 
-  if (heap_p->base_used_length < 2) {
+  if (length < 2) {
     return;
   }
 
@@ -41,18 +41,18 @@ void ajustHeap(Heap *heap_p)
     left_child_idx = (cur_idx << 1) + 1;
     right_child_idx = (cur_idx << 1) + 2;
 
-    if (left_child_idx < heap_p->base_used_length) {
+    if (left_child_idx < length) {
       child_idx = left_child_idx;
 
-      if (right_child_idx < heap_p->base_used_length
+      if (right_child_idx < length
           && heap_p->cmp_func_p(heap_p->base_p[right_child_idx], heap_p->base_p[left_child_idx]) < 0) {
         child_idx = right_child_idx;
       }
     } else {
-      child_idx = heap_p->base_used_length;
+      child_idx = length;
     }
 
-    if (child_idx >= heap_p->base_used_length
+    if (child_idx >= length
         || heap_p->cmp_func_p(value, heap_p->base_p[child_idx]) < 0) {
       break;
     }
@@ -266,7 +266,7 @@ int replaceHeapTop(Heap *heap_p, HeapValue value)
     heap_p->base_used_length = 1;
   }
 
-  ajustHeap(heap_p);
+  ajustHeap(heap_p, heap_p->base_used_length);
 
   return error;
 }
@@ -291,7 +291,7 @@ int deleteHeapTop(Heap *heap_p, HeapValue *value_p)
   }
 
   if (--heap_p->base_used_length > 1) {
-    ajustHeap(heap_p);
+    ajustHeap(heap_p, heap_p->base_used_length);
   }
 
 end:
@@ -303,7 +303,7 @@ int heapSort(Heap *heap_p)
 {
   int error = NO_ERROR;
   int64_t i = 0;
-  int64_t length = 0;
+  int64_t end_i = 0;
   HeapValue value;
 
   assert(heap_p != NULL);
@@ -312,30 +312,28 @@ int heapSort(Heap *heap_p)
     goto end;
   }
 
-  length = heap_p->base_used_length;
+  end_i = heap_p->base_used_length - 1;
 
-  for (i = 0; i < length; ++i) {
+  for (i = 0; i < heap_p->base_used_length; ++i) {
     value = heap_p->base_p[0];
-    heap_p->base_p[0] = heap_p->base_p[heap_p->base_used_length - 1];
-    heap_p->base_p[heap_p->base_used_length - 1] = value;
+    heap_p->base_p[0] = heap_p->base_p[end_i];
+    heap_p->base_p[end_i] = value;
 
-    --heap_p->base_used_length;
+    ajustHeap(heap_p, end_i);
 
-    ajustHeap(heap_p);
+    --end_i;
   }
-
-  heap_p->base_used_length = length;
 
   // make the sort result fits MaxHeap/MinHeap
   i = 0;
-  length -= 1;
-  while (i < length) {
+  end_i = heap_p->base_used_length - 1;
+  while (i < end_i) {
     value = heap_p->base_p[i];
-    heap_p->base_p[i] = heap_p->base_p[length];
-    heap_p->base_p[length] = value;
+    heap_p->base_p[i] = heap_p->base_p[end_i];
+    heap_p->base_p[end_i] = value;
 
     ++i;
-    --length;
+    --end_i;
   }
 
 end:

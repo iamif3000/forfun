@@ -79,7 +79,7 @@ int main(void)
     heapValue(heap_p, i + 1, &value2);
     if (value2.i < value1.i) {
       error = -2;
-      goto end;
+      //goto end;
     }
   }
 
