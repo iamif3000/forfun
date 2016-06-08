@@ -5,17 +5,18 @@
 // TODO: wal
 
 #define HEADER_SLOT 0
+#define FILE_SLOT 1
 #define SLOT_PAGE_HEADER_SIZE 8
-#define SLOT_SIZE 32 //8 + 8 + 8 + 8
+#define SLOT_SIZE 64 //8 + 8 + 8 + 8
 
-static int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot);
-static int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot);
-static int getSlotPageHeader(SlotPage *slot_page_p, SlotPageHeader *header);
-static int setSlotPageHeader(SlotPage *slot_page_p, const SlotPageHeader *header);
-static count_t getSlotPageLeftSize(const SlotPage *slot_page_p);
+static int getSlot(const Page *page_p, const number_t slot_number, Slot *slot);
+static int setSlot(Page *page_p, const number_t slot_number, const Slot *slot);
+static void getSlotPageHeader(Page *page_p, SlotPageHeader *header);
+static void setSlotPageHeader(Page *page_p, const SlotPageHeader *header);
+static count_t getSlotPageLeftSize(const Page *page_p);
 
 //static
-int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
+int getSlot(const Page *page_p, const number_t slot_number, Slot *slot)
 {
 #define READ_64BITS_FROM_STREAM(stream, type, ref) \
   do { \
@@ -25,11 +26,14 @@ int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
 
   byte *pos = NULL;
   int error = NO_ERROR;
+  SlotPageHeader header;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && slot != NULL);
+  assert(page_p != NULL && slot != NULL);
 
-  if (slot_page_p->header.slot_count > slot_number) {
-    pos = slot_page_p->page_p->bytes + PAGE_SIZE - (slot_number + 1) * SLOT_SIZE;
+  getSlotPageHeader(page_p, &header);
+
+  if (header.slot_count > slot_number) {
+    pos = page_p->bytes + PAGE_SIZE - (slot_number + 1) * SLOT_SIZE;
 
     // read slot info
     slot->no = slot_number;
@@ -53,7 +57,7 @@ int getSlot(const SlotPage *slot_page_p, const number_t slot_number, Slot *slot)
 }
 
 //static
-int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
+int setSlot(Page *page_p, const number_t slot_number, const Slot *slot)
 {
 #define SAVE_UINT64_TO_STREAM(stream, ui64) \
   do { \
@@ -64,13 +68,16 @@ int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
 
   byte *pos = NULL;
   uint64_t tmp;
+  SlotPageHeader header;
 
   int error = NO_ERROR;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && slot != NULL);
+  assert(page_p != NULL && slot != NULL);
 
-  if (slot_page_p->header.slot_count > slot_number) {
-    pos = slot_page_p->page_p->bytes + PAGE_SIZE - (slot_number + 1) * SLOT_SIZE;
+  getSlotPageHeader(page_p, &header);
+
+  if (header.slot_count > slot_number) {
+    pos = page_p->bytes + PAGE_SIZE - (slot_number + 1) * SLOT_SIZE;
 
     // set slot info
     SAVE_UINT64_TO_STREAM(pos, slot->type);
@@ -92,69 +99,98 @@ int setSlot(SlotPage *slot_page_p, const number_t slot_number, const Slot *slot)
 }
 
 //static
-int getSlotPageHeader(SlotPage *slot_page_p, SlotPageHeader *header)
+void getSlotPageHeader(Page *page_p, SlotPageHeader *header)
 {
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && header != NULL);
+  assert(page_p != NULL && header != NULL);
 
-  byte *pos = slot_page_p->page_p->bytes;
+  byte *pos = page_p->bytes;
   header->slot_count = ntohll(*(count_t*)pos);
-
-  if (header != &slot_page_p->header) {
-    slot_page_p->header.slot_count = header->slot_count;
-  }
-
-  return NO_ERROR;
 }
 //static
-int setSlotPageHeader(SlotPage *slot_page_p, const SlotPageHeader *header)
+void setSlotPageHeader(Page *page_p, const SlotPageHeader *header)
 {
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && header != NULL);
+  assert(page_p != NULL && header != NULL);
 
   count_t slot_count = htonll(header->slot_count);
-  byte *pos = slot_page_p->page_p->bytes;
+  byte *pos = page_p->bytes;
   memcpy(pos, &slot_count, sizeof(slot_count));
-
-  if (header != &slot_page_p->header) {
-    slot_page_p->header.slot_count = header->slot_count;
-  }
-
-  return NO_ERROR;
 }
 
 //static
-count_t getSlotPageLeftSize(const SlotPage *slot_page_p)
+count_t getSlotPageLeftSize(const Page *page_p)
 {
   count_t left_size = 0;
   Slot slot;
+  SlotPageHeader header;
 
-  assert (slot_page_p != NULL);
+  assert (page_p != NULL);
 
-  count_t slot_count = slot_page_p->header.slot_count;
+  getSlotPageHeader(page_p, &header);
+
+  count_t slot_count = header.slot_count;
 
   assert(slot_count > 0);
 
+
+
   left_size = PAGE_SIZE - (slot_count + 1) * SLOT_SIZE; // 1 for new slot
 
-  (void)getSlot(slot_page_p, slot_count - 1, &slot);
+  (void)getSlot(page_p, slot_count - 1, &slot);
   left_size = left_size - slot.end - 1;
 
   return left_size;
 }
 
-int getSlotPageRecord(const SlotPage *slot_page_p, const number_t slot_number, SlotPageRecord *record_p)
+void formatRawPage(byte *page_p)
+{
+  SlotPageHeader header;
+  Slot slot;
+  byte *pos = NULL;
+
+  assert(page_p != NULL);
+
+  //write the first slot with slot_header
+  header.slot_count = 0;
+
+  memcpy(page_p, htonll(header.slot_count), sizeof(header.slot_count));
+
+  INIT_SLOT(&slot);
+  slot.type = ALIVE;
+  slot.length = SLOT_PAGE_HEADER_SIZE;
+  slot.start = 0;
+  slot.end = SLOT_PAGE_HEADER_SIZE - 1;
+  slot.op_id = 0;
+
+  pos = page_p + PAGE_SIZE - SLOT_SIZE;
+
+  // set slot info
+  SAVE_UINT64_TO_STREAM(pos, slot->type);
+  SAVE_UINT64_TO_STREAM(pos, slot->length);
+  SAVE_UINT64_TO_STREAM(pos, slot->start);
+  SAVE_UINT64_TO_STREAM(pos, slot->end);
+  SAVE_UINT64_TO_STREAM(pos, slot->op_id);
+  SAVE_UINT64_TO_STREAM(pos, slot->next_pos.page_id.vol_id);
+  SAVE_UINT64_TO_STREAM(pos, slot->next_pos.page_id.pg_id);
+  SAVE_UINT64_TO_STREAM(pos, slot->next_pos.slot_number);
+}
+
+int getSlotPageRecord(const Page *page_p, const number_t slot_number, SlotPageRecord *record_p)
 {
   int error = NO_ERROR;
+  SlotPageHeader header;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && record_p != NULL);
+  assert(page_p != NULL && record_p != NULL);
 
-  if (slot_page_p->header.slot_count > slot_number) {
-    error = getSlot(slot_page_p, slot_number, &record_p->slot);
+  getSlotPageHeader(page_p, &header);
+
+  if (header.slot_count > slot_number) {
+    error = getSlot(page_p, slot_number, &record_p->slot);
     if (error != NO_ERROR) {
       goto end;
     }
 
     record_p->length = record_p->slot.length;
-    record_p->record_p = slot_page_p->page_p->bytes + record_p->slot.start;
+    record_p->record_p = page_p->bytes + record_p->slot.start;
   } else {
     error = ER_SLOT_PAGE_SLOT_OUT_OF_RANGE;
     SET_ERROR(error);
@@ -165,23 +201,23 @@ end:
   return error;
 }
 
-int setSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, const byte *record_p, const count_t record_len)
+int setSlotPageRecord(Page *page_p, const number_t slot_number, const byte *record_p, const count_t record_len)
 {
   int error = NO_ERROR;
   Slot slot;
   count_t size;
   byte *bytes = NULL;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && record_p != NULL);
+  assert(page_p != NULL && record_p != NULL);
 
-  error = getSlot(slot_page_p, slot_number, &slot);
+  error = getSlot(page_p, slot_number, &slot);
   if (error != NO_ERROR) {
     goto end;
   }
 
   size = slot.end - slot.start + 1;
   if (size >= record_len) {
-    bytes = slot_page_p->page_p->bytes + slot.start;
+    bytes = page_p->bytes + slot.start;
 
     memcpy(bytes, record_p, record_len);
 
@@ -189,7 +225,7 @@ int setSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, const b
       slot.length = record_len;
 
       // update slot info
-      error = setSlot(slot_page_p, slot_number, &slot);
+      error = setSlot(page_p, slot_number, &slot);
       if (error != NO_ERROR) {
         goto end;
       }
@@ -207,24 +243,24 @@ end:
 /*
  * NOTE: updateSlotPageRecord may set other types of slot besides HOME
  */
-int updateSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, const byte *record_p, const count_t record_len)
+int updateSlotPageRecord(Page *page_p, const number_t slot_number, const byte *record_p, const count_t record_len)
 {
   int error = NO_ERROR;
   Slot slot;
   count_t size;
   byte *bytes = NULL;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && record_p != NULL);
+  assert(page_p != NULL && record_p != NULL);
 
   // TODO : implement
-  error = getSlot(slot_page_p, slot_number, &slot);
+  error = getSlot(page_p, slot_number, &slot);
   if (error != NO_ERROR) {
     goto end;
   }
 
   size = slot.end - slot.start + 1;
   if (size >= record_len) {
-    bytes = slot_page_p->page_p->bytes + slot.start;
+    bytes = page_p->bytes + slot.start;
 
     memcpy(bytes, record_p, record_len);
 
@@ -232,7 +268,7 @@ int updateSlotPageRecord(SlotPage *slot_page_p, const number_t slot_number, cons
       slot.length = record_len;
 
       // update slot info
-      error = setSlot(slot_page_p, slot_number, &slot);
+      error = setSlot(page_p, slot_number, &slot);
       if (error != NO_ERROR) {
         goto end;
       }
@@ -249,7 +285,7 @@ end:
   return error;
 }
 
-int appendSlotPageRecord(SlotPage *slot_page_p, const byte *record_p, const count_t record_len)
+int appendSlotPageRecord(Page *page_p, const byte *record_p, const count_t record_len)
 {
   int error = NO_ERROR;
   Slot slot;
@@ -258,24 +294,27 @@ int appendSlotPageRecord(SlotPage *slot_page_p, const byte *record_p, const coun
   offset_t record_start = 0;
   byte *bytes = NULL;
   count_t aligned_record_len;
+  SlotPageHeader header;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && record_p != NULL);
+  assert(page_p != NULL && record_p != NULL);
+
+  getSlotPageHeader(&header);
 
   // calculate whether this page can hold the record
-  slot_count = slot_page_p->header.slot_count;
+  slot_count = header.slot_count;
 
   assert(slot_count > 0);
 
   // TODO : consider reserve size
   aligned_record_len = ALIGN_DISK_DEFAULT(record_len);
 
-  left_size = getSlotPageLeftSize(slot_page_p);
+  left_size = getSlotPageLeftSize(page_p);
   if (left_size >= aligned_record_len) {
     // get start copy position
-    (void)getSlot(slot_page_p, slot_count - 1, &slot);
+    (void)getSlot(page_p, slot_count - 1, &slot);
     record_start = slot.end + 1;
 
-    bytes = slot_page_p->page_p->bytes;
+    bytes = page_p->bytes;
 
     // write record
     memcpy(bytes + record_start, record_p, record_len);
@@ -287,11 +326,11 @@ int appendSlotPageRecord(SlotPage *slot_page_p, const byte *record_p, const coun
     slot.start = record_start;
     slot.end = record_start + aligned_record_len - 1;
 
-    (void)setSlot(slot_page_p, slot_count, &slot);
+    (void)setSlot(page_p, slot_count, &slot);
 
     // update header
-    slot_page_p->header.slot_count += 1;
-    (void)setSlotPageHeader(slot_page_p, &slot_page_p->header);
+    header.slot_count += 1;
+    (void)setSlotPageHeader(page_p, &header);
   } else {
     // TODO : consider OVERFLOW
 
@@ -304,33 +343,35 @@ end:
   return error;
 }
 
-int allocSlot(SlotPage *slot_page_p, const count_t size, Slot *slot, SlotType type)
+int allocSlot(Page *page_p, const count_t size, Slot *slot, SlotType type)
 {
   int error = NO_ERROR;
   count_t left_size = 0;
 
-  assert(slot_page_p != NULL && slot != NULL);
+  assert(page_p != NULL && slot != NULL);
+
+  INIT_SLOT(slot);
 
   size = ALIGN_DISK_DEFAULT(size);
 
-  left_size = getSlotPageLeftSize(slot_page_p);
+  left_size = getSlotPageLeftSize(page_p);
 
   if (left_size >= size) {
     SlotPageHeader header;
     Slot last_slot;
 
-    (void)getSlotPageHeader(slot_page_p, &header);
-    (void)getSlot(slot_page_p, header.slot_count - 1, &last_slot);
+    (void)getSlotPageHeader(page_p, &header);
+    (void)getSlot(page_p, header.slot_count - 1, &last_slot);
     slot->no = header.slot_count;
     slot->type = type;
     slot->length = 0;
     slot->start = last_slot.end + 1;
     slot->end = last_slot.end + size;
 
-    (void)setSlot(slot_page_p, header.slot_count, slot);
+    (void)setSlot(page_p, header.slot_count, slot);
 
     header.slot_count += 1;
-    (void)setSlotPageHeader(slot_page_p, &header);
+    (void)setSlotPageHeader(page_p, &header);
   } else {
     error = ER_SLOT_PAGE_NOT_ENOUGH_SPACE;
     SET_ERROR(error);
@@ -341,35 +382,35 @@ end:
   return error;
 }
 
-int allocOverflowSlot(SlotPage *slot_page_p, Slot *slot)
+int allocOverflowSlot(Page *page_p, Slot *slot)
 {
   int error = NO_ERROR;
   count_t size = 0;
 
-  assert(slot_page_p != NULL && slot != NULL);
+  assert(page_p != NULL && slot != NULL);
 
   // TODO : calculate the overflow size
 
-  error = allocSlot(slot_page_p, size, slot, ALIVE_OVERFLOW);
+  error = allocSlot(page_p, size, slot, ALIVE_OVERFLOW);
 
   return error;
 }
 
-int setSlotType(SlotPage *slot_page_p, const number_t slot_number, const SlotType type)
+int setSlotType(Page *page_p, const number_t slot_number, const SlotType type)
 {
   int error = NO_ERROR;
   Slot slot;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL);
+  assert(page_p != NULL);
 
-  error = getSlot(slot_page_p, slot_number, &slot);
+  error = getSlot(page_p, slot_number, &slot);
   if (error != NO_ERROR) {
     goto end;
   }
 
   if (slot.type != type) {
     slot.type = type;
-    error = setSlot(slot_page_p, slot_number, &slot);
+    error = setSlot(page_p, slot_number, &slot);
     if (error != NO_ERROR) {
       goto end;
     }
@@ -380,15 +421,15 @@ end:
   return error;
 }
 
-int deleteSlot(SlotPage *slot_page_p, const number_t slot_number)
+int deleteSlot(Page *page_p, const number_t slot_number)
 {
   int error = NO_ERROR;
   Slot slot;
   bool set_slot = false;
 
-  assert(slot_page_p != NULL && slot_page_p->page_p != NULL && slot_number > 0);
+  assert(page_p != NULL && slot_number > 0);
 
-  error = getSlot(slot_page_p, slot_number, &slot);
+  error = getSlot(page_p, slot_number, &slot);
   if (error != NO_ERROR) {
     goto end;
   }
@@ -402,7 +443,7 @@ int deleteSlot(SlotPage *slot_page_p, const number_t slot_number)
   }
 
   if (set_slot) {
-    error = setSlot(slot_page_p, slot_number, &slot);
+    error = setSlot(page_p, slot_number, &slot);
     if (error != NO_ERROR) {
       goto end;
     }

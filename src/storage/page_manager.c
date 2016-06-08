@@ -230,7 +230,7 @@ PageManager *getPageManager()
 
     assert((PAGE_SIZE & (PAGE_SIZE - 1)) == 0);
 
-    per_page_cache_size = ALIGN_DEFAULT(sizeof(PageCache) + PAGE_SIZE);
+    per_page_cache_size = ALIGN_DEFAULT(sizeof(PageCache));
     page_cache_count = ALIGN_BYTES(PAGE_CACHE_SIZE, PAGE_SIZE)/PAGE_SIZE;
 
     page_manager_p->page_cache_block_p = (PageCache*)malloc(per_page_cache_size * page_cache_count);

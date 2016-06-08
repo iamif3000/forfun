@@ -5,7 +5,9 @@
 
 #include "../common/common.h"
 #include "../port/os_file.h"
+
 #include "page.h"
+#include "file.h"
 #include "volume.h"
 
 static int createVolumeFile(const String *path_p, count_t size);
@@ -275,11 +277,6 @@ int formatVolume(const Volume *volume_p, VolumeType type)
 
   //page_map_page_count = ALIGN_BYTES((ALIGN_BYTES(page_count, 8) >> 3), PAGE_SIZE) / PAGE_SIZE;
 
-  header.current_alloc_page = 1;
-  header.allocatd_page_count = 1;
-
-  // header.file_tracker should be set after the btree is created.
-
   // move to the start of file
   ofst = seekFile(volume_p->fd, 0, SEEK_SET);
   if (ofst < 0) {
@@ -301,7 +298,51 @@ int formatVolume(const Volume *volume_p, VolumeType type)
     }
   }
 
-  // TODO : b+tree for file_tracker
+  // page 0 for volume header, page 1 for file_tracker
+  header.current_alloc_page = 2;
+  header.allocatd_page_count = 2;
+
+  SET_PAGEID(&header.file_tracker, 0, 1);
+
+
+  // the first file is file_tracker
+  File *file_p = (File*)malloc(sizeof(File));
+  if (file_p == NULL) {
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    SET_ERROR(error);
+    goto end;
+  }
+
+  initFile(file_p);
+
+  SET_PAGEID(&file_p->current_page_id, 0, 1);
+  SET_PAGEID(&file_p->start_page_id, 0, 1);
+  SET_PAGEID(&file_p->end_page_id, 0, 1);
+  SET_FILEID(&file_p->id, 0, 1, START_SLOT_IN_DATA_PAGE);
+  file_p->header.type = FILE_TYPE_DATA;
+  file_p->header.page_count = 1;
+  file_p->header.record_count = 1; // file_tracker it-self
+
+  // TODO : file_tracker
+  {
+    Page page;
+    PageID next_id, prev_id;
+    byte buf[64]; // 64 is big enough to hold two PageID
+    byte *buf_p = buf;
+
+    formatRawPage(&page.bytes[0]);
+
+    SET_PAGEID_NULL(&prev_id);
+    SET_PAGEID_NULL(&next_id);
+
+    buf_p = pageIDToStream(buf_p, &prev_id);
+    buf_p = pageIDToStream(buf_p, &next_id);
+
+    // slot1 is the file linker part
+    error = appendSlotPageRecord(&page, buf, buf_p - buf);
+
+    // slot2 is the data part start
+  }
 
   error = NO_ERROR;
 

@@ -172,6 +172,30 @@ end:
   return error;
 }
 
+int lastError()
+{
+  int error = NO_ERROR;
+  Thread *thread_p = NULL;
+  ErrorList *list_p = NULL;
+
+  thread_p = getThread();
+  if (thread_p == NULL) {
+    // this should be serious error, so when meet this error we should exit...
+    // So this doesn't matter
+    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+    goto end;
+  }
+
+  list_p = thread_p->err_list_p;
+  if (list_p != NULL) {
+    error = list_p->error_code;
+  }
+
+end:
+
+  return error;
+}
+
 int removeLastError()
 {
   int error = NO_ERROR;
@@ -185,9 +209,11 @@ int removeLastError()
   }
 
   list_p = thread_p->err_list_p;
-  thread_p->err_list_p = list_p->next_p;
+  if (list_p != NULL) {
+    thread_p->err_list_p = list_p->next_p;
 
-  freeErrorList(list_p);
+    freeErrorList(list_p);
+  }
 
 end:
 

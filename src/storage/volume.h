@@ -28,8 +28,10 @@
     (h_p)->page_count = 0; \
     (h_p)->allocatd_page_count = 0; \
     (h_p)->current_alloc_page = 0; \
-    (h_p)->file_tracker.vol_id = 0; \
-    (h_p)->file_tracker.pg_id = 0; \
+    (h_p)->file_tracker.vol_id = NULL_VOLUMEID; \
+    (h_p)->file_tracker.pg_id = NULL_PAGEIDX; \
+    (h_p)->file_tracker_index.vol_id = NULL_VOLUMEID; \
+    (h_p)->file_tracker_index.pg_id = NULL_PAGEIDX; \
   } while(0)
 
 #define NULL_VOLUMEID -1
@@ -62,7 +64,9 @@ struct volume_header {
   count_t page_count;
   count_t allocatd_page_count;
   id64_t current_alloc_page;
-  FileID file_tracker;
+
+  PageID file_tracker;       // the content are file or btree
+  PageID file_tracker_index; // the root of btree, for fast search
 };
 
 Volume *createVolume(const VolumeID id, const VolumeType type, const String *path_p, const count_t size);
