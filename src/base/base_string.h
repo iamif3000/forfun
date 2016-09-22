@@ -53,7 +53,12 @@ int appendByte(String *str, byte b);
 int appendBytes(String *str, byte *b_p, count_t length);
 void resetString(String *str);
 
+// for stack value
 int initString(String *str, count_t size, const char *cstr);
 int destroyString(String *str);
+
+count_t stringLength(String *str);
+byte *stringToStream(byte *buf_p, String *str);
+byte *streamToString(byte *buf_p, String *str);
 
 #endif /* BASE_STRING_H_ */

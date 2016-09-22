@@ -305,3 +305,61 @@ void resetString(String *str)
   str->length = 0;
   str->bytes[str->length] = '\0';
 }
+
+count_t stringLength(String *str)
+{
+  assert(str != NULL);
+
+  return str->length;
+}
+
+byte *stringToStream(byte *buf_p, String *str)
+{
+  count_t len = 0;
+
+  assert(buf_p != NULL && str != NULL);
+
+  len = htonll(str->length);
+  memcpy(buf_p, &len, sizeof(len));
+  buf_p += sizeof(len);
+
+  memcpy(buf_p, str->bytes, str->length);
+  buf_p += str->length;
+
+  return buf_p;
+}
+
+// The String must be a stack value.
+byte *streamToString(byte *buf_p, String *str, int *error)
+{
+  count_t len = 0;
+  byte *buf2_p = NULL;
+
+  assert(buf_p != NULL && str != NULL && error != NULL);
+
+  memcpy(&len, buf_p, sizeof(len));
+  buf_p += sizeof(len);
+  len = ntohll(len);
+
+  if (str->size <= len) {
+    buf2_p = (byte*)string_alloc(len + 1);
+    if (buf2_p == NULL) {
+      *error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+      SET_ERROR(*error);
+      goto end;
+    }
+
+    string_free(str->bytes);
+    str->bytes = buf2_p;
+  }
+
+  memcpy(str->bytes, buf_p, len);
+  buf_p += len;
+  str->bytes[len] = '\0';
+  str->length = len;
+  str->size = len + 1;
+
+end:
+
+  return buf_p;
+}

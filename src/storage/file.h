@@ -5,6 +5,9 @@
  *      Author: duping
  */
 #include "../common/id.h"
+
+#include "../base/base_string.h"
+
 #include "page.h"
 
 #ifndef FILE_H_
@@ -43,6 +46,8 @@ struct file {
   PageID start_overflow_page_id;    // content
 
   PageID current_page_id;           // content
+
+  String name;
 };
 
 struct file_header {
@@ -53,8 +58,9 @@ struct file_header {
 
 // for format volume
 void initFile(File *file_p);
+count_t getFileStreamSize(File *file_p);
 byte *fileToStream(byte *buf_p, File *file_p);
-byte *streamToFile(byte *buf_p, File *file_p);
+byte *streamToFile(byte *buf_p, File *file_p, int *error);
 
 File *createDataFile(String *name_p, int prealloc_pages);
 File *createBtreeFile(String *name_p, int prealloc_pages);

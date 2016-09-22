@@ -7,7 +7,7 @@
 #ifndef PAGE_H_
 #define PAGE_H_
 
-#define PAGE_SIZE  0x8000 // 16k
+#define PAGE_SIZE  0x4000 // 16k
 
 #define GET_PAGE_RESOURCE_FROM_PAGE_PTR(page_p) \
   GET_TYPE_PTR_BY_MEMBER_PTR(PageResource, page, page_p)

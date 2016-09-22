@@ -189,10 +189,33 @@ void initFile(File *file_p)
   file_p->header.type = FILE_TYPE_DATA;
 
   SET_FILEID_NULL(&file_p->id);
+
+  initString(&file_p->name, 64, "");
+}
+
+count_t getFileStreamSize(File *file_p)
+{
+  int length = 0;
+
+  assert(file_p != NULL);
+
+  length = sizeof(file_p->id)
+         + sizeof(file_p->header)
+         + sizeof(file_p->start_page_id)
+         + sizeof(file_p->end_page_id)
+         + sizeof(file_p->prealloc_start_page_id)
+         + sizeof(file_p->start_overflow_page_id)
+         + sizeof(file_p->current_page_id)
+         + sizeof(count_t) // the length of string
+         + stringLength(&file_p->name);
+
+  return length;
 }
 
 byte *fileToStream(byte *buf_p, File *file_p)
 {
+  count_t len = 0;
+
   assert(buf_p != NULL && file_p != NULL);
 
   buf_p = fileIDToStream(buf_p, &file_p->id);
@@ -202,13 +225,14 @@ byte *fileToStream(byte *buf_p, File *file_p)
   buf_p = pageIDToStream(buf_p, &file_p->prealloc_start_page_id);
   buf_p = pageIDToStream(buf_p, &file_p->start_overflow_page_id);
   buf_p = pageIDToStream(buf_p, &file_p->current_page_id);
+  buf_p = stringToStream(buf_p, &file_p->name);
 
   return buf_p;
 }
 
-byte *streamToFile(byte *buf_p, File *file_p)
+byte *streamToFile(byte *buf_p, File *file_p, int *error)
 {
-  assert(buf_p != NULL && file_p != NULL);
+  assert(buf_p != NULL && file_p != NULL && error != NULL);
 
   buf_p = streamToFileID(buf_p, &file_p->id);
   buf_p = streamToFileHeader(buf_p, &file_p->header);
@@ -217,6 +241,7 @@ byte *streamToFile(byte *buf_p, File *file_p)
   buf_p = streamToPageID(buf_p, &file_p->prealloc_start_page_id);
   buf_p = streamToPageID(buf_p, &file_p->start_overflow_page_id);
   buf_p = streamToPageID(buf_p, &file_p->current_page_id);
+  buf_p = streamToFile(buf_p, &file_p->name, error);
 
   return buf_p;
 }

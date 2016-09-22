@@ -14,6 +14,9 @@ static int createVolumeFile(const String *path_p, count_t size);
 static int setVolumeHeader(const Volume *vol_p, const VolumeHeader *vol_header_p);
 static int getVolumeHeader(const Volume *vol_p, VolumeHeader *vol_header_p);
 
+static byte *volumeHeaderToStream(byte *buf_p, VolumeHeader *header_p);
+static byte *streamToVolumeHeader(byte *buf_p, VolumeHeader *header_p);
+
 /*
  * static
  * return : < 0 error, > 0 fd
@@ -298,51 +301,113 @@ int formatVolume(const Volume *volume_p, VolumeType type)
     }
   }
 
-  // page 0 for volume header, page 1 for file_tracker
-  header.current_alloc_page = 2;
-  header.allocatd_page_count = 2;
-
-  SET_PAGEID(&header.file_tracker, 0, 1);
-
-
-  // the first file is file_tracker
-  File *file_p = (File*)malloc(sizeof(File));
-  if (file_p == NULL) {
-    error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
-    SET_ERROR(error);
-    goto end;
-  }
-
-  initFile(file_p);
-
-  SET_PAGEID(&file_p->current_page_id, 0, 1);
-  SET_PAGEID(&file_p->start_page_id, 0, 1);
-  SET_PAGEID(&file_p->end_page_id, 0, 1);
-  SET_FILEID(&file_p->id, 0, 1, START_SLOT_IN_DATA_PAGE);
-  file_p->header.type = FILE_TYPE_DATA;
-  file_p->header.page_count = 1;
-  file_p->header.record_count = 1; // file_tracker it-self
-
-  // TODO : file_tracker
   {
+#define BUF_SIZE 1024
     Page page;
     PageID next_id, prev_id;
-    byte buf[64]; // 64 is big enough to hold two PageID
+    byte buf[BUF_SIZE];
+    byte *base_p = buf;
     byte *buf_p = buf;
+    byte *new_buf_len = 0;
+    byte *new_buf_p = NULL;
 
-    formatRawPage(&page.bytes[0]);
+    if (type != PRIMARY_VOLUME) {
+      // page0 for volume header
+      header.current_alloc_page = 1;
+      header.allocatd_page_count = 1;
 
-    SET_PAGEID_NULL(&prev_id);
-    SET_PAGEID_NULL(&next_id);
+    } else {
+      // page0 for volume header, page1 for file_tracker
+      // save page1
+      header.current_alloc_page = 2;
+      header.allocatd_page_count = 2;
 
-    buf_p = pageIDToStream(buf_p, &prev_id);
-    buf_p = pageIDToStream(buf_p, &next_id);
+      SET_PAGEID(&header.file_tracker, 0, 1);
 
-    // slot1 is the file linker part
-    error = appendSlotPageRecord(&page, buf, buf_p - buf);
+      // the first file is file_tracker
+      File *file_p = (File*)malloc(sizeof(File));
+      if (file_p == NULL) {
+        error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+        SET_ERROR(error);
+        goto block_end;
+      }
 
-    // slot2 is the data part start
+      initFile(file_p);
+
+      SET_PAGEID(&file_p->current_page_id, 0, 1);
+      SET_PAGEID(&file_p->start_page_id, 0, 1);
+      SET_PAGEID(&file_p->end_page_id, 0, 1);
+      SET_FILEID(&file_p->id, 0, 1, START_SLOT_IN_DATA_PAGE);
+      file_p->header.type = FILE_TYPE_DATA;
+      file_p->header.page_count = 1;
+      file_p->header.record_count = 1; // file_tracker it-self
+
+      // save to disk
+
+      formatRawPage(&page.bytes[0]);
+
+      SET_PAGEID_NULL(&prev_id);
+      SET_PAGEID_NULL(&next_id);
+
+      buf_p = pageIDToStream(buf_p, &prev_id);
+      buf_p = pageIDToStream(buf_p, &next_id);
+
+      // slot1 is the file linker part
+      error = appendSlotPageRecord(&page, base_p, buf_p - base_p);
+      if (error != NO_ERROR) {
+        goto block_end;
+      }
+
+      // slot2 is the data part start
+      buf_p = base_p;
+
+      count_t file_size = getFileStreamSize(file_p);
+      if (file_size > BUF_SIZE) {
+        new_buf_len = sizeof(byte) * file_size;
+        new_buf_p = (byte*)malloc(new_buf_len);
+        if (new_buf_p == NULL) {
+          error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
+          SET_ERROR(error);
+          goto block_end;
+        }
+
+        base_p = new_buf_p;
+        buf_p = new_buf_p;
+      }
+
+      buf_p = fileToStream(buf_p, file_p);
+
+      error = appendSlotPageRecord(&page, base_p, buf_p - base_p);
+      if (error != NO_ERROR) {
+        goto block_end;
+      }
+
+      // write page to
+      error = savePageToVolume(volume_p, 1, page.bytes);
+      if (error != NO_ERROR) {
+        goto block_end;
+      }
+    }
+
+    // TODO: save page0
+    buf_p = base_p;
+
+    ;
+
+block_end:
+
+    if (new_buf_p != NULL) {
+      free(new_buf_p);
+    }
+
+    if (error != NO_ERROR) {
+      goto end;
+    }
+
+#undef BUF_SIZE
   }
+
+
 
   error = NO_ERROR;
 
