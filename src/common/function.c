@@ -35,13 +35,14 @@ uint64_t ntohll(uint64_t ui64)
   }
 
   // 8 bytes
-  byte *p = (byte*)&ui64;
-  SWAP(p[0], p[7]);
-  SWAP(p[1], p[6]);
-  SWAP(p[2], p[5]);
-  SWAP(p[3], p[4]);
-
-  return ui64;
+  return ((ui64 << 56) & 0xFF00000000000000LL) |
+         ((ui64 << 40) & 0x00FF000000000000LL) |
+         ((ui64 << 24) & 0x0000FF0000000000LL) |
+         ((ui64 << 8)  & 0x000000FF00000000LL) |
+         ((ui64 >> 8)  & 0x00000000FF000000LL) |
+         ((ui64 >> 24) & 0x0000000000FF0000LL) |
+         ((ui64 >> 40) & 0x000000000000FF00LL) |
+         ((ui64 >> 56) & 0x00000000000000FFLL);
 }
 
 uint64_t htonll(uint64_t ui64)
@@ -56,11 +57,10 @@ uint32_t ntohl(uint32_t ui32)
   }
 
   // 4 bytes
-  byte *p = (byte*)&ui32;
-  SWAP(p[0], p[3]);
-  SWAP(p[1], p[2]);
-
-  return ui32;
+  return ((ui32 << 24) & 0xFF000000) |
+         ((ui32 << 8)  & 0x00FF0000) |
+         ((ui32 >> 8)  & 0x0000FF00) |
+         ((ui32 >> 24) & 0x000000FF);
 }
 
 uint32_t htonl(uint32_t ui32)
@@ -75,10 +75,8 @@ uint16_t ntohs(uint16_t ui16)
   }
 
   // 2 bytes
-  byte *p = (byte*)&ui16;
-  SWAP(p[0], p[1]);
-
-  return ui16;
+  return ((ui16 << 8) & 0xFF00) |
+         ((ui16 >> 8) & 0x00FF);
 }
 
 uint16_t htons(uint16_t ui16)
