@@ -310,6 +310,7 @@ int formatVolume(const Volume *volume_p, VolumeType type)
     byte *buf_p = buf;
     byte *new_buf_len = 0;
     byte *new_buf_p = NULL;
+    File *file_p = NULL;
 
     if (type != PRIMARY_VOLUME) {
       // page0 for volume header
@@ -325,7 +326,7 @@ int formatVolume(const Volume *volume_p, VolumeType type)
       SET_PAGEID(&header.file_tracker, 0, 1);
 
       // the first file is file_tracker
-      File *file_p = (File*)malloc(sizeof(File));
+      file_p = (File*)malloc(sizeof(File));
       if (file_p == NULL) {
         error = ER_GENERIC_OUT_OF_VIRTUAL_MEMORY;
         SET_ERROR(error);
@@ -398,6 +399,12 @@ block_end:
 
     if (new_buf_p != NULL) {
       free(new_buf_p);
+    }
+
+    if (file_p != NULL) {
+      clearFile(file_p);
+      free(file_p);
+      free(file_p);
     }
 
     if (error != NO_ERROR) {

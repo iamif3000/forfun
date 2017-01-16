@@ -193,6 +193,13 @@ void initFile(File *file_p)
   initString(&file_p->name, 64, "");
 }
 
+void clearFile(File *file_p)
+{
+  assert(file_p != NULL);
+
+  destroyString(&file_p->name);
+}
+
 count_t getFileStreamSize(File *file_p)
 {
   int length = 0;

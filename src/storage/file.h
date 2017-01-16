@@ -58,6 +58,7 @@ struct file_header {
 
 // for format volume
 void initFile(File *file_p);
+void clearFile(File *file_p);
 count_t getFileStreamSize(File *file_p);
 byte *fileToStream(byte *buf_p, File *file_p);
 byte *streamToFile(byte *buf_p, File *file_p, int *error);
