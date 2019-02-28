@@ -1,5 +1,6 @@
 /*
  * improve performance, skip unnecessary write
+ * for gcc and little-endian env
  */
 
 #include <stdio.h>
