@@ -208,19 +208,37 @@ int skipListInsert(SkipList* skip_list, const OptValue value) {
 	return 0;
 }
 
+int skipListRemove(SkipList* skip_list, const OptValue value) {
+	SkipListNode* node = _skipListSearch(skip_list, value);
+	if (node != nullptr) {
+		for (int i = 0; i < skip_list->level; ++i) {
+			if (node->level_next[i] != nullptr) {
+				node->level_next[i]->level_prev_next[i] = node->level_prev_next[i];
+			}
+			if (node->level_prev_next[i] != nullptr) {
+				*(node->level_prev_next[i]) = node->level_next[i];
+			}
+		}
+		destroySkipListNode(node);
+		return 1;
+	}
+	
+	return 0;
+}
+
 //24
 int main(void) {
 #define N 1024
 	SkipList list;
-	OptValue value[N];
+	OptValue value;
 
 	srand(time(nullptr));
 
 	skipListInit(&list, 16, intCmp);
 
 	for (int i = 0; i < N; ++i) {
-		value[i].i32 = rand() % N + 1;
-		skipListInsert(&list, value[i]);
+		value.i32 = i + 1;// rand() % N + 1;
+		skipListInsert(&list, value);
 	}
 
 	for (int i = 0; i < list.level; ++i) {
@@ -242,6 +260,31 @@ int main(void) {
 		}//*/
 	}
 	printf("%d\n", count);
+
+	// randomly remove half nodes
+	count = 0;
+	for (int i = 0; i < N >> 1; ++i) {
+		value.i32 = i + 1;//rand() % N + 1;
+		count += skipListRemove(&list, value);
+	}
+	for (int i = 0; i < list.level; ++i) {
+		for (SkipListNode* node = list.level_ptr[i]; node != nullptr; node = node->level_next[i]) {
+			printf("%2d  ", node->value.i32);
+		}
+		printf("\n");
+	}
+	printf("%d\n", count);
+
+	for (int i = 0; i < N; ++i) {
+		value.i32 = i + 1;// rand() % N + 1;
+		skipListInsert(&list, value);
+	}
+	for (int i = 0; i < list.level; ++i) {
+		for (SkipListNode* node = list.level_ptr[i]; node != nullptr; node = node->level_next[i]) {
+			printf("%2d  ", node->value.i32);
+		}
+		printf("\n");
+	}
 
 	skipListClear(&list);
 
